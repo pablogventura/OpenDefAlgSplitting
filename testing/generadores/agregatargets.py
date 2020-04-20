@@ -6,6 +6,7 @@ def c_input(line):
     """
     Clean input
     """
+    line = line.decode("ascii")
     if "#" in line:
         line = line[:line.find("#")]
     return line.strip()
@@ -18,7 +19,7 @@ def parse_universe(line):
 
 
 def cardinalidad(archivo):
-    f=gzip.open(path,"r")
+    f=gzip.open(archivo,"r")
     while True:
         line = c_input(f.readline())
         if line:
@@ -37,7 +38,7 @@ def generar(aridad, densidad, archivo):
         pass
     filename = os.path.join(directorio,str(c)+"_T"+str(aridad)+"_"+str(densidad)+"_"+os.path.basename(archivo)[:-2])
 
-    os.system('python3 randomtarget.py %s %s < "%s" | gzip > "%s" ' % (aridad, densidad,archivo,filename))
+    os.system('gunzip -c "%s" | python3 randomtarget.py %s %s | gzip > "%s" ' % (archivo, aridad, densidad,filename))
 
 
 from glob import glob
