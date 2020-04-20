@@ -22,6 +22,7 @@ def random_target(universe,tarity,density):
 def main():
     try:
         cardinality,arity, density = sys.argv[1:4]
+        cardinality = int(cardinality)
         arity = int(arity)
         density = float(density)
     except:
