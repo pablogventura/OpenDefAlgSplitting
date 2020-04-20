@@ -6,7 +6,7 @@ def generar(directory, cardinality, arity, densidad, cuantity=100):
 
     for i in range(cuantity):
         filename = os.path.join(directory, '_'.join([str(cardinality),str(arity),str(densidad)]))
-        filename += "_NODEF.target"
+        filename += "_NODEF.target.gz"
         if os.path.isfile(filename):
             continue
         filename = '"' + filename + '"'
