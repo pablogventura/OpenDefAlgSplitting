@@ -21,4 +21,4 @@ def generar(directory, cardinality, arity, densidad, cuantity=100):
 for cardinality in [2**i for i in (3,4,5,6,7,8)]:
     for arity in [3]:
         for densidad in [0.5]:
-            generar("targets",cardinality,arity,densidad)
+            generar("targets_nodef",cardinality,arity,densidad)
