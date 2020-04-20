@@ -18,7 +18,7 @@ def parse_universe(line):
 
 
 def cardinalidad(archivo):
-    f=open(archivo,"r")
+    f=gzip.open(path,"r")
     while True:
         line = c_input(f.readline())
         if line:
@@ -37,11 +37,11 @@ def generar(aridad, densidad, archivo):
         pass
     filename = os.path.join(directorio,str(c)+"_T"+str(aridad)+"_"+str(densidad)+"_"+os.path.basename(archivo)[:-2])
 
-    os.system('python3 randomtarget.py %s %s > "%s" < "%s"' % (aridad, densidad,filename,archivo))
+    os.system('python3 randomtarget.py %s %s < "%s" | gzip > "%s" ' % (aridad, densidad,archivo,filename))
 
 
 from glob import glob
 for archivo in (y for x in os.walk(".") for y in glob(os.path.join(x[0], '*.modelwt'))):
-    for aridad in [2,3]:
-        for densidad in [0.1,0.3,0.5]:
+    for aridad in [3]:
+        for densidad in [0.5]:
             generar(aridad,densidad,archivo)
