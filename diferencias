@@ -1,0 +1,83 @@
+diff --git a/main.py b/main.py
+index 3042126..4da2139 100644
+--- a/main.py
++++ b/main.py
+@@ -24,9 +24,15 @@ def permutations_forced(not_forced_elems, forced_elems, repeat):
+     #         for i in product(*sets):
+     #             yield i
+     # TODO MEJORAR ESTO PARA NO FILTRAR
+-    for t in permutations(not_forced_elems + forced_elems, r=repeat):
+-        if any(e in forced_elems for e in t):
+-            yield t
++    preprocess = False
++    if preprocess:
++        for t in permutations(not_forced_elems + forced_elems, r=repeat):
++            if any(e in forced_elems for e in t):
++                yield t
++    else:
++        for t in product(not_forced_elems + forced_elems,repeat=repeat):
++            if any(e in forced_elems for e in t):
++                yield t
+ 
+ 
+ class TupleHistory:
+@@ -37,7 +43,10 @@ class TupleHistory:
+     
+     def __init__(self, t, targets):
+         self.t = t
+-        self.history = list(t)
++        self.history = []
++        for a in self.t:
++            if a not in self.history:
++                self.history.append(a)
+         self.polarity = tuple(tg(*t) for tg in targets)
+         self.has_generated = False  # TODO capaz si genero al arrancar
+     
+@@ -253,12 +262,14 @@ def is_open_def_recursive(block):
+     return formula
+ 
+ 
+-def is_open_def(model, targets):
++def is_open_def(model, targets, preprocess):
+     targets = sorted(targets, key=lambda tg: tg.sym)
+     assert len(targets) == 1
+     assert not model.relations
+-    
+-    tuples = set(TupleHistory(t, targets) for t in permutations(model.universe, r=targets[0].arity))
++    if preprocess:
++        tuples = set(TupleHistory(t, targets) for t in permutations(model.universe, r=targets[0].arity))
++    else:
++        tuples = set(TupleHistory(t, targets) for t in product(model.universe, repeat=targets[0].arity))
+     operations = defaultdict(list)
+     for op in model.operations.values():
+         operations[op.arity].append(op)
+@@ -271,8 +282,9 @@ def is_open_def(model, targets):
+ 
+ def main():
+     check_solution = True
++    preprocess = False
+     try:
+-        model = parser(sys.argv[1], preprocess=False)
++        model = parser(sys.argv[1], preprocess=preprocess)
+     except IndexError:
+         model = parser()
+     print("*" * 20)
+@@ -293,7 +305,7 @@ def main():
+             print("ERROR: NO TARGET RELATIONS FOUND")
+             return
+         try:
+-            f = is_open_def(model, targets_rels)
++            f = is_open_def(model, targets_rels, preprocess)
+             print("\t%s is definable by %s" % (targets[arity][0].sym,f))
+             formula = formula | f
+         except Counterexample as e:
+@@ -307,7 +319,9 @@ def main():
+     time_hit = time() - start_hit
+     print("Elapsed time: %s" % time_hit)
+     if check_solution:
++        print("original")
+         print(targets_rels[0].superrel.r)
++        print("resultado")
+         print(formula.extension(model, arity=targets_rels[0].superrel.arity))
+         assert targets_rels[0].superrel.r == formula.extension(model, arity=targets_rels[
+             0].superrel.arity), "MODEL CHECKING FAILED!"
