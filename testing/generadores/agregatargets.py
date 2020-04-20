@@ -1,4 +1,4 @@
-
+import gzip
 import os
 from random import randint
 
