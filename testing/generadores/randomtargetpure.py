@@ -34,7 +34,7 @@ def parse_universe(line):
 def random_target(universe,tarity,density):
     tuplas = permutations(universe, r=tarity)
     card = len(universe)
-    cantidad = int(float(factorial(card)) / factorial(card-tarity))
+    cantidad = factorial(card) // factorial(card-tarity)
     print("T0 %s %s\n" % (cantidad, tarity))
     for i in iter_sample_fast(tuplas, cantidad):
         print(" ".join(map(str, i)))
