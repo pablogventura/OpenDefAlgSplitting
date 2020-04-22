@@ -38,7 +38,7 @@ def generar(aridad, densidad, archivo):
         pass
     filename = os.path.join(directorio,str(c)+"_T"+str(aridad)+"_"+str(densidad)+"_"+os.path.basename(archivo)[:-2])
 
-    os.system('gunzip -c "%s" | python3 randomtarget.py %s %s | gzip > "%s" ' % (archivo, aridad, densidad,filename))
+    os.system('gunzip -c "%s" | python3 randomtargetpure.py %s %s | gzip > "%s" ' % (archivo, aridad, densidad,filename))
 
 
 from glob import glob
