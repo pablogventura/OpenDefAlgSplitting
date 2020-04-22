@@ -1,5 +1,5 @@
-from random import sample
-from itertools import combinations
+import random
+from itertools import permutations
 from math import factorial
 import sys
 
@@ -8,8 +8,8 @@ def iter_sample_fast(iterable, samplesize):
     iterator = iter(iterable)
     # Fill in the first samplesize elements:
     try:
-        for _ in xrange(samplesize):
-            results.append(iterator.next())
+        for _ in range(samplesize):
+            results.append(next(iterator))
     except StopIteration:
         raise ValueError("Sample larger than population.")
     random.shuffle(results)  # Randomize their positions
@@ -32,10 +32,11 @@ def parse_universe(line):
     return [eval(i) for i in line.split()]
 
 def random_target(universe,tarity,density):
-    tuplas = list(combinations(universe, r=tarity))
-    cantidad = int(len(tuplas) * density)
+    tuplas = permutations(universe, r=tarity)
+    card = len(universe)
+    cantidad = int(float(factorial(card)) / factorial(card-tarity))
     print("T0 %s %s\n" % (cantidad, tarity))
-    for i in sample(tuplas, cantidad):
+    for i in iter_sample_fast(tuplas, cantidad):
         print(" ".join(map(str, i)))
 
 def main():
