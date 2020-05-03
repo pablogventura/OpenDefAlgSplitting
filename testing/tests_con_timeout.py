@@ -13,7 +13,7 @@ try:
             print("%s%%" % (i / len(files)))
             while len(procs) >= cores:
                 procs = [p for p in procs if p.is_running()]
-            procs.append(ShellProc('timeout -s 9 10s python3 main.py "%s" > "%s"' % (f,f.replace(".model",".megahit"))))
+            procs.append(ShellProc('timeout -s 9 30m python3 main.py "%s" > "%s"' % (f,f.replace(".model",".megahit"))))
             
 except KeyboardInterrupt:
     pass
