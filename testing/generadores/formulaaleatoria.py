@@ -54,3 +54,12 @@ def termino_aleatorio_no_exacta(p):
     result = s + result
     return result
 
+
+def formula_aleatoria(p,f):
+    """
+    Una formula aleatoria con al menos un termino de profundidad exacta p
+    con f cantidad de subformulas
+    """
+    
+    for i in range(p):
+        pass
