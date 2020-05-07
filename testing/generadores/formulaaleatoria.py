@@ -38,21 +38,8 @@ def termino_aleatorio_no_exacta(p):
     """
     Devuelve un termino aleatorio de profundidad p
     """
-    if p == 0:
-        return choice(variables)
-    s, a = simbolo_aleatorio()
-    subterminos = []
-    i_exacto = randint(0,a-1)
-    
-    for i in range(a):
-        subterminos.append(termino_aleatorio_no_exacta(p-1))
-    
-    result=""
-    if subterminos:
-        result = ", ".join(subterminos)
-        result = "(%s)" % result
-    result = s + result
-    return result
+    p = randint(0,p)
+    return termino_aleatorio_exacta(p)
 
 
 def formula_aleatoria(p,f):
