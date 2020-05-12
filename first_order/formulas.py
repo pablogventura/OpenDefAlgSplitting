@@ -107,14 +107,23 @@ class OpTerm(Term):
         return hash((self.sym,self.args))
     
     def grade(self):
-        return 1 + max(t.grade() for t in self.args)
+        if self.args:
+            return 1 + max(t.grade() for t in self.args)
+        else:
+            return 0
 
     def free_vars(self):
-        return set.union(*[f.free_vars() for f in self.args])
+        if self.args:
+            return set.union(*[f.free_vars() for f in self.args])
+        else:
+            return set()
 
     def evaluate(self, model, vector):
-        args = [t.evaluate(model,vector) for t in self.args]
-        return model.operations[self.sym.op](*args)
+        if self.args:
+            args = [t.evaluate(model,vector) for t in self.args]
+            return model.operations[self.sym.op](*args)
+        else:
+            return model.operations[self.sym.op]()
 
 # FORMULAS
 

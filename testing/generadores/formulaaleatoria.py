@@ -100,7 +100,7 @@ def main():
             print(input())
             
     except EOFError:
-        sim = {"f0":2,"f1":3}
+        sim = {"Sum":2,"Neg":1,"Zero":0}
         print(formula_aleatoria(3,2, sim, arity))
 
 
