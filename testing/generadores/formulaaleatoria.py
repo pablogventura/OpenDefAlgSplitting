@@ -1,32 +1,43 @@
 from random import choice, randint
 
-simbolos = {"f0":2,"f1":3}
-
-variables = ["x","y","z"]
+sim = {"f0":2,"f1":3,"Zero":0}
 
 
-def simbolo_aleatorio():
-    sym = choice(list(simbolos.keys()))
-    return (sym,simbolos[sym])
+def variables_libres(cantidad):
+    return {chr(122-i):0 for i in range(cantidad)}
 
+def funciones(simbolos):
+    return {k:simbolos[k] for k in simbolos if simbolos[k] > 0}
 
+def variables(simbolos):
+    return {k:simbolos[k] for k in simbolos if simbolos[k] == 0}
 
-def termino_aleatorio_exacta(p):
+def funcion_aleatoria(simbolos):
+    f = funciones(simbolos)
+    sym = choice(list(f.keys()))
+    return (sym,f[sym])
+
+def variable_aleatoria(simbolos):
+    v = variables(simbolos)
+    sym = choice(list(v.keys()))
+    return sym
+
+def termino_aleatorio_exacta(p, simbolos):
     """
     Devuelve un termino aleatorio de profundidad p
     """
     if p == 0:
-        return choice(variables)
+        return variable_aleatoria(simbolos)
     
-    s, a = simbolo_aleatorio()
+    s, a = funcion_aleatoria(simbolos)
     subterminos = []
     i_exacto = randint(0,a-1)
     
     for i in range(a):
         if i == i_exacto:
-            subterminos.append(termino_aleatorio_exacta(p-1))
+            subterminos.append(termino_aleatorio_exacta(p-1,simbolos))
         else:
-            subterminos.append(termino_aleatorio_no_exacta(p-1))
+            subterminos.append(termino_aleatorio_no_exacta(p-1,simbolos))
     result=""
     if subterminos:
         result = ", ".join(subterminos)
@@ -35,29 +46,30 @@ def termino_aleatorio_exacta(p):
     return result
 
 
-def termino_aleatorio_no_exacta(p):
+def termino_aleatorio_no_exacta(p, simbolos):
     """
     Devuelve un termino aleatorio de profundidad p
     """
     p = randint(0,p)
-    return termino_aleatorio_exacta(p)
+    return termino_aleatorio_exacta(p,simbolos)
 
 
-def formula_aleatoria(p,f):
+def formula_aleatoria(p,f, simbolos, aridad):
     """
     Una formula aleatoria con al menos un termino de profundidad exacta p
     con f cantidad de subformulas
     """
+    simbolos.update(variables_libres(aridad))
     result = ""
     i_exacto = randint(0,f-1)
     for i in range(f):
         subformula = ""
         if i == i_exacto:
-            subformula += termino_aleatorio_exacta(p)
+            subformula += termino_aleatorio_exacta(p,simbolos)
         else:
-            subformula += termino_aleatorio_no_exacta(p)
+            subformula += termino_aleatorio_no_exacta(p,simbolos)
         subformula += " == "
-        subformula += termino_aleatorio_no_exacta(p)
+        subformula += termino_aleatorio_no_exacta(p,simbolos)
         subformula = "(%s)" % subformula
         if randint(0,1) == 1:
             subformula = "-" + subformula
