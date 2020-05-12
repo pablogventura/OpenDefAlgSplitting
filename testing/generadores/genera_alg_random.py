@@ -20,7 +20,7 @@ def generador(tA, t, c, fs):
     for i, arity in enumerate(fs):
         print("f%s %s" % (i, arity))
         for values in product(range(cardinality), repeat=arity):
-            fvalues = randint(1,cardinality)
+            fvalues = randint(0,cardinality-1)
             print(" ".join(str(e) for e in values) + " %s" % fvalues)
 
 

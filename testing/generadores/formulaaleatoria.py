@@ -1,6 +1,6 @@
 from random import choice, randint
+import sys
 
-sim = {"f0":2,"f1":3,"Zero":0}
 
 
 def variables_libres(cantidad):
@@ -60,7 +60,8 @@ def formula_aleatoria(p,f, simbolos, aridad):
     con f cantidad de subformulas
     """
     simbolos.update(variables_libres(aridad))
-    result = ""
+    result = "T0(%s) " % ",".join(reversed(list(variables_libres(aridad).keys())))
+
     i_exacto = randint(0,f-1)
     for i in range(f):
         subformula = ""
@@ -86,7 +87,25 @@ def formula_aleatoria(p,f, simbolos, aridad):
         
         
         
-        
+def main():
+    try:
+        arity = sys.argv[1]
+        arity = int(arity)
+    except e:
+        print(e)
+        print("Toma la aridad, y genera la formurmula que agrega a un archivo model que este entrando por la stdin")
+        return
+    try:
+        while True:
+            print(input())
+            
+    except EOFError:
+        sim = {"f0":2,"f1":3}
+        print(formula_aleatoria(3,2, sim, arity))
+
+
+if __name__ == "__main__":
+    main()
         
         
         
