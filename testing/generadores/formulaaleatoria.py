@@ -1,4 +1,5 @@
 from random import choice, randint
+from itertools import combinations
 import sys
 
 
@@ -61,7 +62,9 @@ def formula_aleatoria(p,f, simbolos, aridad):
     """
     simbolos.update(variables_libres(aridad))
     result = "T0(%s) " % ",".join(reversed(list(variables_libres(aridad).keys())))
-
+    for (a,b) in combinations(variables_libres(aridad),2):
+        result += "-(%s==%s) & " % (a,b)
+    # para que agregue que sean todas las variables distintas
     i_exacto = randint(0,f-1)
     for i in range(f):
         subformula = ""
