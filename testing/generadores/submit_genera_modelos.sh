@@ -32,7 +32,7 @@
 #SBATCH --time 2-10:00:00
 
 ### Lanzado de la tarea
-source /users/pventura/venv/bin/venv/bin/activate
+
 srun python3 generator.py
 
 exit 0
