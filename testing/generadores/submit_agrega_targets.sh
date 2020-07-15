@@ -29,7 +29,7 @@
 #SBATCH --cpus-per-task=6
 
 ### Tiempo de ejecución. Formato dias-horas:minutos. Máximo: tres días.
-#SBATCH --time 2-10:00:00
+#SBATCH --time 1-00:00:00
 
 ### Lanzado de la tarea
 
