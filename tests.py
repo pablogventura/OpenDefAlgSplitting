@@ -3,7 +3,7 @@ Toma como argumento el directorio donde estan los modelos
 """
 from testing.shell_non_blocking import ShellProc
 import os
-cores = 5
+cores = 14
 procs = []
 try:
     from glob import glob
