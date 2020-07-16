@@ -26,10 +26,10 @@
 ### En mendieta: <= 16
 ### En jupiterace: <= 6
 ### En zx81: <= 12
-#SBATCH --cpus-per-task=6
+#SBATCH --cpus-per-task=14
 
 ### Tiempo de ejecución. Formato dias-horas:minutos. Máximo: tres días.
-#SBATCH --time 2-10:00:00
+#SBATCH --time 1-00:00:00
 
 ### Lanzado de la tarea
 srun python3 tests.py
