@@ -1,5 +1,0 @@
-srun: Job step aborted: Waiting up to 32 seconds for job step to finish.
-srun: got SIGCONT
-slurmstepd-zx81: error: *** STEP 34295.1 ON zx81 CANCELLED AT 2020-04-01T12:01:54 ***
-slurmstepd-zx81: error: *** JOB 34295 ON zx81 CANCELLED AT 2020-04-01T12:01:54 ***
-srun: forcing job termination
