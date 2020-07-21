@@ -31,7 +31,7 @@ def generar(aridad, densidad, archivo):
     c = cardinalidad(archivo)
 
     directorio = os.path.dirname(archivo)
-    directorio = os.path.join(directorio, "targets")
+    directorio = os.path.join(directorio, "testing/generadores/modelos/grupo_abeliano_diverso_wt")
     try:
         os.mkdir(directorio)
     except:

@@ -14,7 +14,7 @@
 #SBATCH --partition=batch
 
 ### Nombre de la tarea
-#SBATCH --job-name=PostaDef
+#SBATCH --job-name=agregaT
 
 ### Cantidad de nodos a usar
 #SBATCH --nodes=1
@@ -26,13 +26,14 @@
 ### En mendieta: <= 16
 ### En jupiterace: <= 6
 ### En zx81: <= 12
-#SBATCH --cpus-per-task=14
+#SBATCH --cpus-per-task=6
 
 ### Tiempo de ejecución. Formato dias-horas:minutos. Máximo: tres días.
 #SBATCH --time 1-00:00:00
 
 ### Lanzado de la tarea
-srun python3 tests_con_timeout.py
+
+srun python3 agregaformula.py
 
 exit 0
 
