@@ -16,6 +16,9 @@
 ### Nombre de la tarea
 #SBATCH --job-name=PostaDef
 
+#SBATCH --mail-type=BEGIN,END,FAIL         # Mail events (NONE, BEGIN, END, FAIL, ALL)
+#SBATCH --mail-user=pventura@famaf.unc.edu.ar
+
 ### Cantidad de nodos a usar
 #SBATCH --nodes=1
 
@@ -32,8 +35,9 @@
 #SBATCH --time 1-00:00:00
 
 ### Lanzado de la tarea
+date
 srun python3 tests_con_timeout.py
-
+date
 exit 0
 
 
