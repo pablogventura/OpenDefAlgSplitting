@@ -43,6 +43,6 @@ def generar(aridad, densidad, archivo):
 
 from glob import glob
 for archivo in (y for x in os.walk(".") for y in glob(os.path.join(x[0], '*.modelwt'))):
-    for aridad in [3]:
+    for aridad in [2]:
         for densidad in [0.5]:
             generar(aridad,densidad,archivo)
