@@ -14,7 +14,7 @@
 #SBATCH --partition=batch
 
 ### Nombre de la tarea
-#SBATCH --job-name=agregaT
+#SBATCH --job-name=agregaF
 
 ### Cantidad de nodos a usar
 #SBATCH --nodes=1
