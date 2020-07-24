@@ -26,17 +26,18 @@ def cardinalidad(archivo):
             return len(parse_universe(line))
 
 
-def generar(aridad, densidad, archivo):
+def generar(aridad, archivo):
     # genera alg random
     c = cardinalidad(archivo)
     print(archivo)
+    assert False
     directorio = os.path.dirname(archivo)
     directorio = os.path.join(directorio, "testing/generadores/modelos/grupo_abeliano_diverso_wt")
     try:
         os.mkdir(directorio)
     except:
         pass
-    filename = os.path.join(directorio,str(c)+"_T"+str(aridad)+"_"+str(densidad)+"_"+os.path.basename(archivo)[:-2])
+    filename = os.path.join(directorio,str(c)+"_T"+str(aridad)+"_"+os.path.basename(archivo)[:-2])
 
     os.system('gunzip -c "%s" | python3 formulaaleatoria.py %s | gzip > "%s" ' % (archivo, aridad, filename))
 
