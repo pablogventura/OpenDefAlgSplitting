@@ -36,7 +36,7 @@ I 2
 3 2 0
 3 3 3
 
-#@random_delete_tuples(1)
+@random_delete_tuples(1)
 T0(x,y,z) (x==y) | -(y==z)
 
 

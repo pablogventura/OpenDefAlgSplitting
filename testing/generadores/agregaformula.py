@@ -29,7 +29,7 @@ def cardinalidad(archivo):
 def generar(aridad, densidad, archivo):
     # genera alg random
     c = cardinalidad(archivo)
-
+    print(archivo)
     directorio = os.path.dirname(archivo)
     directorio = os.path.join(directorio, "testing/generadores/modelos/grupo_abeliano_diverso_wt")
     try:

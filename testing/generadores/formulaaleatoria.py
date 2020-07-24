@@ -94,6 +94,8 @@ def main():
     try:
         arity = sys.argv[1]
         arity = int(arity)
+        sim = sys.argv[2]
+        sim = eval(sim)
     except e:
         print(e)
         print("Toma la aridad, y genera la formurmula que agrega a un archivo model que este entrando por la stdin")
@@ -103,7 +105,7 @@ def main():
             print(input())
             
     except EOFError:
-        sim = {"Sum":2,"Neg":1,"Zero":0}
+
         print(formula_aleatoria(3,2, sim, arity))
 
 
