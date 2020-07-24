@@ -29,17 +29,24 @@ def cardinalidad(archivo):
 def generar(aridad, archivo):
     # genera alg random
     c = cardinalidad(archivo)
-    print(archivo)
-    assert False
     directorio = os.path.dirname(archivo)
-    directorio = os.path.join(directorio, "testing/generadores/modelos/grupo_abeliano_diverso_wt")
+    directorio = os.path.join(directorio, "formula")
     try:
         os.mkdir(directorio)
     except:
         pass
     filename = os.path.join(directorio,str(c)+"_T"+str(aridad)+"_"+os.path.basename(archivo)[:-2])
+    
+    if "alg_random_wt" in archivo:
+        sim={'f0':2,'f1':3}
+    elif "boole_wt" in archivo:
+        sim={'m':2,'j':2}
+    elif "grupo_abeliano_diverso_wt" in archivo:
+        sim={'Sum':2,'Neg':1,'Zero':0}
+    else:
+        assert(False,"No es de ninguna signatura conocida")
 
-    os.system('gunzip -c "%s" | python3 formulaaleatoria.py %s | gzip > "%s" ' % (archivo, aridad, filename))
+    os.system('gunzip -c "%s" | python3 formulaaleatoria.py %s "%s" | gzip > "%s" ' % (archivo, aridad, sim, filename))
 
 
 from glob import glob
