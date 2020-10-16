@@ -191,21 +191,22 @@ class Block():
         for th in self.tuples:
             result[th.step(op, ti)][th.polarity].append(th)
         if len(result.keys()) == 1:
+            # todas las tuplas avanzaron en el bloque pero no se dividio
+            # no hay necesidad de tocar formulas, porque todo se sigue cumpliendo
             return [self]
         else:
+            # el bloque se ha dividido
             generators = self.generator.fork(len(result.keys()))
             results = []
             fneg = formulas.true()
             negados = []
             for i, index in enumerate(result.keys()):
                 tuples_new_block = result[index]
-                
-                
                 if any(th[0].has_generated for th in tuples_new_block.values()):
                     # TODO alguien genero dentro del bloque (todos generan)
                     # en realidad bastaria con ver la primer tupla nomas
                     generators[i].hubo_nuevo()
-                    negados.append((i,index))
+                    negados.append((i,index)) # se genero alguien distinto a todos
                     continue
                     # f = self.formula & -generators[i].formula_diferenciadora(index)  # formula valida
                 else:
@@ -311,8 +312,20 @@ def main():
     if check_solution:
         #print(targets_rels[0].superrel.r)
         #print(formula.extension(model, arity=targets_rels[0].superrel.arity))
-        assert targets_rels[0].superrel.r == formula.extension(model, arity=targets_rels[
-            0].superrel.arity), "MODEL CHECKING FAILED!"
+        extension = formula.extension(model, arity=targets_rels[0].superrel.arity)
+        
+        sobran = extension - set(targets_rels[0].r)
+
+        faltan = set(targets_rels[0].r) - extension
+        print("sobran:")
+        for tup in sobran:
+            print(" ".join(str(e) for e in tup))
+        print("faltan:")
+        for tup in faltan:
+            print(" ".join(str(e) for e in tup))
+        
+        assert targets_rels[0].superrel.r == extension, "MODEL CHECKING FAILED!"
+        
         print("Formula successfully checked")
 
 

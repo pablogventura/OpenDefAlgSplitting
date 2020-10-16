@@ -42,7 +42,7 @@ def barajador(t, d1, d2):
 
 def parse_defformula(line, universe, relations, operations):
     # R(x,y) m(x,y) == j(x,y)
-    #print("%s interpreted as:" % line)
+    # print("%s interpreted as:" % line)
     entorno = dict()
     entorno["model"] = Model(universe, relations, operations)
     entorno.update({r: relations[r].syntax_sym for r in relations})
@@ -70,7 +70,7 @@ def parse_defformula(line, universe, relations, operations):
         valores = {barajador(t, declaracion, formula.implied_declaration()) for t in valores}
         result = Relation(sym, len(declaracion))
         result.r = valores
-        #print(valores)
+
         return result
     elif isinstance(formula, formulas.Term):
         raise NotImplemented("Functions declared by formula not implemented")
