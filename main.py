@@ -212,6 +212,8 @@ class Block():
                 else:
                     f = self.formula & generators[i].formula_diferenciadora(index)  # formula valida
                     fneg = fneg & -generators[i].formula_diferenciadora(index)
+                    # estoy diciendo que es distinto solamente los que se acaban de dividir
+                    # parece suficiente, pero en relaidad es distinto a TODOS
                 tuples_new_block = [th for l in tuples_new_block.values() for th in l]
                 results.append(Block(self.operations, tuples_new_block, self.targets, generators[i], f, self.fs))
             for i, index in negados:
