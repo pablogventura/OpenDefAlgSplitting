@@ -193,6 +193,11 @@ class Block():
         if len(result.keys()) == 1:
             # todas las tuplas avanzaron en el bloque pero no se dividio
             # no hay necesidad de tocar formulas, porque todo se sigue cumpliendo
+            # TODO ACA ANOTO SI HUBO NUEVO
+            for i, index in enumerate(result.keys()):
+                tuples_new_block = result[index]
+                if any(th[0].has_generated for th in tuples_new_block.values()):
+                    self.generator.hubo_nuevo()
             return [self]
         else:
             # el bloque se ha dividido
@@ -208,9 +213,11 @@ class Block():
                     generators[i].hubo_nuevo()
                     negados.append((i,index)) # se genero alguien distinto a todos
                     continue
-                    # f = self.formula & -generators[i].formula_diferenciadora(index)  # formula valida
+                    #f = self.formula & -generators[i].formula_diferenciadora(index)  # formula valida
                 else:
+                    # el bloque no ha generado nada nuevo
                     f = self.formula & generators[i].formula_diferenciadora(index)  # formula valida
+                    
                     fneg = fneg & -generators[i].formula_diferenciadora(index)
                     # estoy diciendo que es distinto solamente los que se acaban de dividir
                     # parece suficiente, pero en relaidad es distinto a TODOS
