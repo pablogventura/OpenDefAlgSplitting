@@ -278,7 +278,7 @@ class OrFormula(BinaryOpFormula):
         return hash(("or",self.subformulas))
             
     def __repr__(self):
-        result = " ∨ ".join(str(f) for f in self.subformulas)
+        result = " ∨ ".join(sorted(str(f) for f in self.subformulas))
         result = "(" + result + ")"
         return result
 
@@ -308,7 +308,7 @@ class AndFormula(BinaryOpFormula):
         return hash(("and",self.subformulas))
                 
     def __repr__(self):
-        result = " ∧ ".join(str(f) for f in self.subformulas)
+        result = " ∧ ".join(sorted(str(f) for f in self.subformulas))
         result = "(" + result + ")"
         return result
 

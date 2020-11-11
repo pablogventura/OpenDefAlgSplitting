@@ -13,6 +13,9 @@ from misc import indent
 import sys
 import datetime
 
+global model
+
+
 class Counterexample(Exception):
     def __init__(self, a):
         super(Counterexample, self).__init__(repr(a))
@@ -165,6 +168,31 @@ class Block():
                                                    formulas.variables(*range(self.arity)))
         else:
             self.generator = generator
+
+
+        if True: # chequeo de formula
+            #print(targets_rels[0].superrel.r)
+            #print(formula.extension(model, arity=targets_rels[0].superrel.arity))
+            global model
+            tuplas = {t.t for t in self.tuples}
+            extension = formula.extension(model, arity=self.arity)
+            
+            sobran = extension - set(tuplas)
+
+            faltan = set(tuplas) - extension
+            print("")
+            print("sobran:")
+            for tup in sobran:
+                print(" ".join(str(e) for e in tup))
+            print("faltan:")
+            for tup in faltan:
+                print(" ".join(str(e) for e in tup))
+            print(self.formula)
+            assert tuplas == extension, "MODEL CHECKING FAILED!"
+            
+            print("Formula successfully checked")
+            print("")
+            print("*"*80)
     
     def finished(self):
         return self.generator.finished
@@ -222,11 +250,15 @@ class Block():
                     # estoy diciendo que es distinto solamente los que se acaban de dividir
                     # parece suficiente, pero en relaidad es distinto a TODOS
                 tuples_new_block = [th for l in tuples_new_block.values() for th in l]
+                print("Parte nueva de la formula (no genero nuevo):")
+                print(generators[i].formula_diferenciadora(index))
                 results.append(Block(self.operations, tuples_new_block, self.targets, generators[i], f, self.fs))
             for i, index in negados:
                 tuples_new_block = result[index]
                 tuples_new_block = [th for l in tuples_new_block.values() for th in l]
                 f = self.formula & fneg
+                print("Parte nueva de la formula (genero nuevo):")
+                print(fneg)
                 results.append(Block(self.operations, tuples_new_block, self.targets, generators[i], f, self.fs))
                 
             return results
@@ -280,6 +312,7 @@ def is_open_def(model, targets):
 
 
 def main():
+    global model
     today = datetime.datetime.today()
     print(today.strftime('%Y-%m-%d %H:%M:%S.%f'))
     check_solution = True
