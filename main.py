@@ -240,7 +240,6 @@ class Block():
                     # en realidad bastaria con ver la primer tupla nomas
                     generators[i].hubo_nuevo()
                     negados.append((i,index)) # se genero alguien distinto a todos
-                    continue
                     #f = self.formula & -generators[i].formula_diferenciadora(index)  # formula valida
                 else:
                     # el bloque no ha generado nada nuevo
@@ -249,10 +248,10 @@ class Block():
                     fneg = fneg & -generators[i].formula_diferenciadora(index)
                     # estoy diciendo que es distinto solamente los que se acaban de dividir
                     # parece suficiente, pero en relaidad es distinto a TODOS
-                tuples_new_block = [th for l in tuples_new_block.values() for th in l]
-                print("Parte nueva de la formula (no genero nuevo):")
-                print(generators[i].formula_diferenciadora(index))
-                results.append(Block(self.operations, tuples_new_block, self.targets, generators[i], f, self.fs))
+                    tuples_new_block = [th for l in tuples_new_block.values() for th in l]
+                    print("Parte nueva de la formula (no genero nuevo):")
+                    print(generators[i].formula_diferenciadora(index))
+                    results.append(Block(self.operations, tuples_new_block, self.targets, generators[i], f, self.fs))
             for i, index in negados:
                 tuples_new_block = result[index]
                 tuples_new_block = [th for l in tuples_new_block.values() for th in l]
