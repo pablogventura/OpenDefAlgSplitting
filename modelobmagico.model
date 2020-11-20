@@ -1,0 +1,35 @@
+# Generated 2020-07-14 11:23:29
+# Parameters: |A| = 7, |MaxSubs| = 0, |ms| = 0 with ms in MaxSubs, Arities = [2]
+'a' 'b' 'c' 'd' 'e'
+f0 2
+'a' 'd' 'e'
+'a' 'e' 'b'
+'b' 'c' 'a'
+'b' 'd' 'a'
+'a' 'a' 'a'
+'a' 'b' 'a'
+'a' 'c' 'a'
+'b' 'a' 'a'
+'b' 'b' 'a'
+'b' 'e' 'a'
+'c' 'a' 'a'
+'c' 'b' 'a'
+'c' 'c' 'a'
+'c' 'd' 'a'
+'c' 'e' 'a'
+'d' 'a' 'a'
+'d' 'b' 'a'
+'d' 'c' 'a'
+'d' 'd' 'a'
+'d' 'e' 'a'
+'e' 'a' 'a'
+'e' 'b' 'a'
+'e' 'c' 'a'
+'e' 'd' 'a'
+'e' 'e' 'a'
+
+T0 3 3
+'a' 'd' 'e'
+'d' 'b' 'c'
+'b' 'e' 'd'
+
