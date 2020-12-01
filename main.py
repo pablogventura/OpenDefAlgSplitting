@@ -23,7 +23,6 @@ class Counterexample(Exception):
 
 def permutations_forced(not_forced_elems, forced_elems, repeat):
     for t in product(not_forced_elems + forced_elems, repeat=repeat):
-        #print("producto %s,%s=%s" % (not_forced_elems,forced_elems,t))
         if any(e in forced_elems for e in t):
             yield t
 
@@ -48,10 +47,6 @@ class TupleHistory:
         Toma la operacion y la tupla de indices
         Devuelve el indice devuelto
         """
-        print("Paso de hit:")
-        print("Historia: %s" % self.history)
-        print("Operacion: %s" % op.sym)
-        print([self.history[i] for i in ti])
         x = op(*[self.history[i] for i in ti])  # resultado de la operacion
         try:
             xi = self.history.index(x)  # indice en la historia
@@ -82,7 +77,7 @@ class IndicesTupleGenerator:
         viejos son los elementos viejos
         nuevos son los elementos que se estan generando ahora
         """
-        self.sintactico = list(sintactico)
+        self.sintactico = sintactico
         self.viejos = viejos
         if generator is None:
             self.generator = iter([])
@@ -106,7 +101,6 @@ class IndicesTupleGenerator:
                 fsym = formulas.OpSym(f.sym, f.arity)
                 
                 self.last_term = fsym(*[self.sintactico[i] for i in ti])
-                print((f.sym,ti))
                 return (f, ti)  # devuelve la operacion y la tupla de indices
             
             except StopIteration:
@@ -137,7 +131,7 @@ class IndicesTupleGenerator:
         for i in range(quantity):
             result.append(
                 IndicesTupleGenerator(self.ops, self.arity, generators[i], list(self.viejos), list(self.nuevos),
-                                      self.sintactico, self.last_term))
+                                      list(self.sintactico), self.last_term))
         return result
 
 
@@ -167,34 +161,6 @@ class Block():
                                                    formulas.variables(*range(self.arity)))
         else:
             self.generator = generator
-
-
-        if True: # chequeo de formula
-            #print(targets_rels[0].superrel.r)
-            #print(formula.extension(model, arity=targets_rels[0].superrel.arity))
-            global model
-            tuplas = {t.t for t in self.tuples}
-            extension = formula.extension(model, arity=self.arity)
-            
-            sobran = extension - set(tuplas)
-
-            faltan = set(tuplas) - extension
-            print("")
-            print("sobran:")
-            for tup in sobran:
-                print(" ".join(str(e) for e in tup))
-            print("faltan:")
-            for tup in faltan:
-                print(" ".join(str(e) for e in tup))
-            print(self.formula)
-            print(self)
-            print(tuplas)
-            print(extension)
-            assert tuplas == extension, "MODEL CHECKING FAILED!"
-            
-            print("Formula successfully checked")
-            print("")
-            print("*"*80)
     
     def finished(self):
         return self.generator.finished
@@ -220,10 +186,7 @@ class Block():
         
         for th in self.tuples:
             result[th.step(op, ti)][th.polarity].append(th)
-        print("division")
-        print(result)
-        print("sintactico:")
-        print(self.generator.sintactico)
+
         if len(result.keys()) == 1:
             # todas las tuplas avanzaron en el bloque pero no se dividio
             # no hay necesidad de tocar formulas, porque todo se sigue cumpliendo
@@ -233,35 +196,6 @@ class Block():
                 if any(th[0].has_generated for th in tuples_new_block.values()):
                     assert all(th[0].has_generated for th in tuples_new_block.values())
                     self.generator.hubo_nuevo()
-                    print("-"*50)
-                    print("dos")
-                    print(th.history)
-                    print(generators[i].sintactico)
-                    print("-"*50)
-            if True: # chequeo de formula
-                #print(targets_rels[0].superrel.r)
-                #print(formula.extension(model, arity=targets_rels[0].superrel.arity))
-                global model
-                tuplas = {t.t for t in self.tuples}
-                print("No hubo parte nueva de la formula porque el bloque no se dividio")
-                extension = self.formula.extension(model, arity=self.arity)
-                
-                sobran = extension - set(tuplas)
-
-                faltan = set(tuplas) - extension
-                print("")
-                print("sobran:")
-                for tup in sobran:
-                    print(" ".join(str(e) for e in tup))
-                print("faltan:")
-                for tup in faltan:
-                    print(" ".join(str(e) for e in tup))
-                print(self.formula)
-                assert tuplas == extension, "MODEL CHECKING FAILED!"
-                
-                print("Formula successfully checked")
-                print("")
-                print("*"*80)
             return [self]
         else:
             # el bloque se ha dividido
@@ -272,35 +206,23 @@ class Block():
             for i, index in enumerate(result.keys()):
                 tuples_new_block = result[index]
                 if any(th[0].has_generated for th in tuples_new_block.values()):
-                    # TODO alguien genero dentro del bloque (todos generan)
-                    # en realidad bastaria con ver la primer tupla nomas
+                    # alguien genero dentro del bloque (todos generan)
                     generators[i].hubo_nuevo()
-                    print("-"*50)
-                    print("uno")
-                    
-                    print(list(tuples_new_block.values())[0][0])
-                    print(generators[i].sintactico)
-                    print("-"*50)
                     negados.append((i,index)) # se genero alguien distinto a todos
-                    #f = self.formula & -generators[i].formula_diferenciadora(index)  # formula valida
                 else:
                     # el bloque no ha generado nada nuevo
-                    print(index)
                     f = self.formula & generators[i].formula_diferenciadora(index)  # formula valida
                     
                     fneg = fneg & -generators[i].formula_diferenciadora(index)
                     # estoy diciendo que es distinto solamente los que se acaban de dividir
-                    # parece suficiente, pero en relaidad es distinto a TODOS
+                    # es suficiente porque la formula del bloque que se esta dividiendo
+                    # implica que es distinto a los demas
                     tuples_new_block = [th for l in tuples_new_block.values() for th in l]
-                    print("Parte nueva de la formula (no genero nuevo):")
-                    print(generators[i].formula_diferenciadora(index))
                     results.append(Block(self.operations, tuples_new_block, self.targets, generators[i], f, self.fs))
             for i, index in negados:
                 tuples_new_block = result[index]
                 tuples_new_block = [th for l in tuples_new_block.values() for th in l]
                 f = self.formula & fneg
-                print("Parte nueva de la formula (genero nuevo):")
-                print(fneg)
                 results.append(Block(self.operations, tuples_new_block, self.targets, generators[i], f, self.fs))
                 
             return results
@@ -321,19 +243,10 @@ def is_open_def_recursive(block):
     """
     
     if block.is_all_in_targets():
-        print("El bloque define una parte")
-        print(block.formula)
-        print(block)
         return block.formula
     elif block.is_disjunt_to_targets():
-        print("El bloque no define nada")
-        print(block.formula)
-        print(block)
         return formulas.false()
     elif block.finished():
-        print("El bloque es contraejemplo")
-        print(block.formula)
-        print(block)
         raise Counterexample(block.tuples)
         # como es un bloque mixto, no es defel hit parcial esta terminado, no definible y termino
     blocks = block.step()
@@ -402,19 +315,7 @@ def main():
     time_hit = time() - start_hit
     print("Elapsed time: %s" % time_hit)
     if check_solution:
-        #print(targets_rels[0].superrel.r)
-        #print(formula.extension(model, arity=targets_rels[0].superrel.arity))
         extension = formula.extension(model, arity=targets_rels[0].superrel.arity)
-        
-        sobran = extension - set(targets_rels[0].r)
-
-        faltan = set(targets_rels[0].r) - extension
-        print("sobran:")
-        for tup in sobran:
-            print(" ".join(str(e) for e in tup))
-        print("faltan:")
-        for tup in faltan:
-            print(" ".join(str(e) for e in tup))
         
         assert targets_rels[0].superrel.r == extension, "MODEL CHECKING FAILED!"
         
