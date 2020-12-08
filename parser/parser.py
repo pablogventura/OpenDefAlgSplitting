@@ -195,7 +195,8 @@ def parser(path=None, preprocess=True, verbose=True):
             # TODO el manejo de errores no deberia imprimir excepciones por pantalla
     if universe is None:
         raise ParserError(linenumber, "Universe not defined")
-    if current_rel is not None and not rel_missing_tuples:
+
+    if current_rel is not None and rel_missing_tuples > 0:
         raise ParserError(
             linenumber, "Missing tuples for relation %s" % current_rel.sym)
     if current_op is not None:
