@@ -8,6 +8,7 @@ from parser import preprocessing
 from first_order import formulas
 import gzip
 
+
 class ParserError(Exception):
     """
     Sintax error while parsing
@@ -21,7 +22,7 @@ def c_input(line):
     """
     Clean input
     """
-    line = line.decode("ascii")
+    line = line.decode("utf-8")
     if "#" in line:
         line = line[:line.find("#")]
     return line.strip()
@@ -107,13 +108,13 @@ def parser(path=None, preprocess=True, verbose=True):
     """
     if path:
         try:
-            f = gzip.open(path,"rb")
+            f = gzip.open(path, "rb")
             f.readline()
             f.seek(0)
         except FileNotFoundError:
             raise ParserError(-1, "File missing")
         except:
-            f = open(path,"rb")
+            f = open(path, "rb")
     else:
         f = sys.stdin
     relations = {}
