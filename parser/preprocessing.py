@@ -61,19 +61,16 @@ def formula_patron(t):
 
 def preprocesamiento2(target):
     #target_formula = formulas.RelSym(target.sym,target.arity)(*formulas.variables(*list(range(target.arity))))
-    fs = defaultdict(set)
-    ts = defaultdict(list)
+    pruned_relations = defaultdict(list)
     for t in target.r:
-        p, tn = formula_patron(t)
-        fs[len(tn)].add(p)
-        ts[len(tn)].append(tn)
+        formula, pruned_tuple = formula_patron(t)
+        pruned_relations[formula].append(pruned_tuple)
     result = []
-    for arity in fs:
-        f = formulas.false()
-        while fs[arity]:
-            f = f | fs[arity].pop()
-        fs[arity] = f
-        result.append(Relation(target.sym + "a%s" % arity,arity,ts[arity],fs[arity],target))
-
+    for formula in pruned_relations:
+        first_tuple = pruned_relations[formula][0]
+        arity = len(first_tuple)
+        patron_name = "_".join(str(i) for i in first_tuple)
+        result.append(Relation(target.sym + "a%sp%s" % (arity,patron_name),arity,pruned_relations[formula],formula,target))
+    print(len(result))
     # return list(fs.values()),list(ts.values())
     return result

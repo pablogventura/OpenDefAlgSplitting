@@ -15,6 +15,24 @@ import datetime
 
 global model
 
+def check_formula(formula, target):
+    extension = formula.extension(model, target.arity)
+
+    if target.r == extension:
+        print("Formula successfully checked")
+    else:
+        print("Extension len: %s" % len(extension))
+        print("Target len:    %s" % len(target.r))
+        print("Intersection len:    %s" % len(target.r.intersection(extension)))
+        print("Faltan:")
+        for t in (target.r - extension):
+            print(" ".join(str(e) for e in t))
+        print("Sobran:")
+        for t in (extension - target.r):
+            print(" ".join(str(e) for e in t))
+        print("Formula failed!")
+        
+
 
 class Counterexample(Exception):
     def __init__(self, a):
@@ -260,7 +278,7 @@ def is_open_def_recursive(block):
 
 def is_open_def(model, targets):
     targets = sorted(targets, key=lambda tg: tg.sym)
-    assert len(targets) == 1
+    #assert len(targets) == 1
     assert not model.relations
     
     tuples = set(TupleHistory(t, targets) for t in permutations(model.universe, r=targets[0].arity))
@@ -303,7 +321,15 @@ def main():
         try:
             f = is_open_def(model, targets_rels)
             print("\t%s is definable by %s" % (targets[arity][0].sym,f))
+            if False:
+                extension = f.extension(model, arity=targets[arity][0].arity)
+                
+                assert targets[arity][0].r == extension, "MODEL CHECKING FAILED!"
+                
+                print("Formula successfully checked")
+            
             formula = formula | f
+
         except Counterexample as e:
             print("NOT DEFINABLE")
             print("\tCounterexample: %s" % e)
@@ -315,11 +341,7 @@ def main():
     time_hit = time() - start_hit
     print("Elapsed time: %s" % time_hit)
     if check_solution:
-        extension = formula.extension(model, arity=targets_rels[0].superrel.arity)
-        
-        assert targets_rels[0].superrel.r == extension, "MODEL CHECKING FAILED!"
-        
-        print("Formula successfully checked")
+        check_formula(formula,targets_rels[0].superrel)
 
 
 if __name__ == "__main__":
