@@ -71,6 +71,6 @@ def preprocesamiento2(target):
         arity = len(first_tuple)
         patron_name = "_".join(str(i) for i in first_tuple)
         result.append(Relation(target.sym + "a%sp%s" % (arity,patron_name),arity,pruned_relations[formula],formula,target))
-    print(len(result))
     # return list(fs.values()),list(ts.values())
+    print(result)
     return result

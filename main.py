@@ -17,18 +17,18 @@ global model
 
 def check_formula(formula, target):
     extension = formula.extension(model, target.arity)
-
-    if target.r == extension:
+    target = set(target.r)
+    if target == extension:
         print("Formula successfully checked")
     else:
         print("Extension len: %s" % len(extension))
-        print("Target len:    %s" % len(target.r))
-        print("Intersection len:    %s" % len(target.r.intersection(extension)))
+        print("Target len:    %s" % len(target))
+        print("Intersection len:    %s" % len(target.intersection(extension)))
         print("Faltan:")
-        for t in (target.r - extension):
+        for t in (target - extension):
             print(" ".join(str(e) for e in t))
         print("Sobran:")
-        for t in (extension - target.r):
+        for t in (extension - target):
             print(" ".join(str(e) for e in t))
         print("Formula failed!")
         
@@ -182,6 +182,7 @@ class Block():
     
     def finished(self):
         return self.generator.finished
+        
     
     def is_all_in_targets(self):
         return all(tg or tg is None for th in self.tuples for tg in th.polarity)
@@ -318,24 +319,22 @@ def main():
         if not targets_rels:
             print("ERROR: NO TARGET RELATIONS FOUND")
             return
-        try:
-            f = is_open_def(model, targets_rels)
-            print("\t%s is definable by %s" % (targets[arity][0].sym,f))
-            if False:
-                extension = f.extension(model, arity=targets[arity][0].arity)
-                
-                assert targets[arity][0].r == extension, "MODEL CHECKING FAILED!"
-                
-                print("Formula successfully checked")
-            
-            formula = formula | f
+        for target_rel in targets_rels:
+            try:
+                f = is_open_def(model, [target_rel])
+                print("\t%s is definable by %s" % (targets[arity][0].sym,f))
+                if True:
+                    check_formula(f,target_rel)
 
-        except Counterexample as e:
-            print("NOT DEFINABLE")
-            print("\tCounterexample: %s" % e)
-            time_hit = time() - start_hit
-            print("Elapsed time: %s" % time_hit)
-            return
+                
+                formula = formula | f
+
+            except Counterexample as e:
+                print("NOT DEFINABLE")
+                print("\tCounterexample: %s" % e)
+                time_hit = time() - start_hit
+                print("Elapsed time: %s" % time_hit)
+                return
     print("DEFINABLE")
     print("\t%s := %s" % (targets_rels[0].sym[:-2], formula))
     time_hit = time() - start_hit
