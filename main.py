@@ -262,7 +262,6 @@ def is_open_def_recursive(block):
     input: un bloque mixto
     output:
     """
-    print(block)
     if block.is_all_in_targets():
         return block.formula
     elif block.is_disjunt_to_targets():
