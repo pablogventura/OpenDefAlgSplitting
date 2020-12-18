@@ -107,7 +107,6 @@ def preprocesamiento2(target):
     pruned_relations = defaultdict(list)
     for t in target.r:
         pattern = Pattern(t)
-        print(pattern)
         pruned_relations[pattern].append(pattern.pruned_tuple)
     result = []
     for pattern in pruned_relations:
