@@ -10,12 +10,12 @@ class Relation(object):
     Relation
     """
     
-    def __init__(self, sym, arity, rel=set(), formula=None, superrel=None):
+    def __init__(self, sym, arity, rel=set(), pattern=None, superrel=None):
         self.syntax_sym = formulas.RelSym(sym,arity)
         self.sym = sym
         self.arity = arity
         self.r = rel
-        self.formula = formula
+        self.pattern = pattern
         if superrel is None:
             self.superrel = self
         else:

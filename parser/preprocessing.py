@@ -113,5 +113,5 @@ def preprocesamiento2(target):
         first_tuple = pruned_relations[pattern][0]
         arity = len(first_tuple)
         patron_name = "_".join(str(i) for i in first_tuple)
-        result.append(Relation(target.sym + pattern.name(),arity,pruned_relations[pattern],pattern.formula(),target))
+        result.append(Relation(target.sym + pattern.name(),arity,pruned_relations[pattern],pattern,target))
     return result
