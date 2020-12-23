@@ -16,6 +16,9 @@ import datetime
 global model
 
 def check_formula(formula, target):
+    print("#"*80)
+    print("Probando formula:")
+    print(formula)
     extension = formula.extension(model, target.arity)
     target = set(target.r)
     if target == extension:
@@ -31,7 +34,7 @@ def check_formula(formula, target):
         for t in (extension - target):
             print(" ".join(str(e) for e in t))
         print("Formula failed!")
-        
+    print("#"*80)
 
 
 class Counterexample(Exception):
@@ -290,7 +293,7 @@ def is_open_def(model, targets):
     for arity in operations:
         operations[arity].sort(key=lambda o: o.sym)
     operations = dict(operations)
-    start_block = Block(operations, tuples, targets,formula=targets[0].formula)
+    start_block = Block(operations, tuples, targets, formula=targets[0].pattern.preprocessed_formula())
     return is_open_def_recursive(start_block)
 
 

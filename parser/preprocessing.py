@@ -30,7 +30,16 @@ class Pattern(object):
     def __eq__(self,other):
         return hash(self.pattern) == hash(other.pattern)
     
-    def formula(self):
+    def preprocessed_formula(self):
+        f = formulas.true()
+        vs = formulas.variables(*list(range(len(self.pruned_tuple))))
+        for v in vs:
+            for w in vs:
+                if v is not w:
+                    f = f & -formulas.eq(v, w)
+        return f
+    
+    def postprocessed_formula(self):
         f = formulas.true()
         vs = formulas.variables(*list(range(len(self.tuple))))
         differents = []
