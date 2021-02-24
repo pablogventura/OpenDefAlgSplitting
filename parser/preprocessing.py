@@ -39,19 +39,6 @@ class Pattern(object):
             for w in vs:
                 if v is not w:
                     f = f & -formulas.eq(v, w)
-        print(f)
-        print(self.postprocessed_formula())
-        return f
-    
-    def preprocessed_formula2(self):
-        f = formulas.true()
-        vs = formulas.variables(*list(range(len(self.pruned_tuple))))
-        for v in vs:
-            for w in vs:
-                if v is not w:
-                    f = f & -formulas.eq(v, w)
-        print(f)
-        print(self.postprocessed_formula())
         return f
     
     def postprocessed_formula(self):

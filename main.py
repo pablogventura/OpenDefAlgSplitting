@@ -181,10 +181,8 @@ class Block():
             self.formula = formula
             self.fs = fs
         if generator is None:
-            prueba = sorted(self.formula.variables_in())
-            print(prueba)
             self.generator = IndicesTupleGenerator(self.operations, self.arity, None, [], list(range(self.arity)),
-                                                   prueba)
+                                                   sorted(self.formula.variables_in()))
         else:
             self.generator = generator
     
@@ -298,7 +296,6 @@ def is_open_def(model, targets):
     for arity in operations:
         operations[arity].sort(key=lambda o: o.sym)
     operations = dict(operations)
-    print("esto por arrancar con un bloque inicial")
     start_block = Block(operations, tuples, targets, formula=targets[0].pattern.preprocessed_formula())
     # el posproceso debe reemplazar nombres no solo agregar una formula
     return is_open_def_recursive(start_block)
@@ -333,12 +330,12 @@ def main():
         for target_rel in targets_rels:
             try:
                 f = is_open_def(model, [target_rel])
-                print("\t%s is definable by %s" % (targets[arity][0].sym,f)) # a esta f hay que postprocesar
+                print("\t%s is definable by %s" % (targets[arity][0].sym,f))
                 if True:
                     check_formula(f,target_rel)
 
                 
-                formula = formula | (f  & target_rel.pattern.postprocessed_formula())
+                formula = formula | (f  & target_rel.pattern.postprocessed_formula()) # aca se posprocesa
 
             except Counterexample as e:
                 print("NOT DEFINABLE")
