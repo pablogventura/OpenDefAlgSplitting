@@ -187,7 +187,7 @@ class Block():
             print(self.formula)
             assert len(self.formula.variables_in()) > 0
             self.generator = IndicesTupleGenerator(self.operations, self.arity, None, [], list(range(self.arity)),
-                                                   sorted(self.formula.variables_in()))
+                                                   sorted(self.formula.free_vars()))
         else:
             self.generator = generator
     
