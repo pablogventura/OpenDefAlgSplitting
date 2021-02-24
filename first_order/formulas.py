@@ -50,7 +50,11 @@ class Variable(Term):
 
     def __repr__(self):
         return self.sym
-    
+
+    def __lt__(self,other):
+        # para poder ordenar variables
+        return self.sym < other.sym
+
     def __hash__(self):
         return hash(self.sym)
 
@@ -253,6 +257,9 @@ class NegFormula(Formula):
     def free_vars(self):
         return self.f.free_vars()
 
+    def variables_in(self):
+        return self.f.variables_in()
+
     def satisfy(self,model,vector):
         return not self.f.satisfy(model,vector)
 
@@ -268,6 +275,12 @@ class BinaryOpFormula(Formula):
         result = set()
         for f in self.subformulas:
             result = result.union(f.free_vars())
+        return result
+        
+    def variables_in(self):
+        result = set()
+        for f in self.subformulas:
+            result = result.union(f.variables_in())
         return result
 
 class OrFormula(BinaryOpFormula):
@@ -369,6 +382,9 @@ class RelFormula(Formula):
 
     def free_vars(self):
         return set.union(*[f.free_vars() for f in self.args])
+    
+    def variables_in(self):
+        return self.free_vars()
 
     def satisfy(self, model, vector):
         args = [t.evaluate(model,vector) for t in self.args]
@@ -394,6 +410,9 @@ class EqFormula(Formula):
     def free_vars(self):
         return set.union(self.t1.free_vars(), self.t2.free_vars())
 
+    def variables_in(self):
+        return self.free_vars()
+
     def satisfy(self, model, vector):
         return self.t1.evaluate(model,vector) == self.t2.evaluate(model,vector)
     def __hash__(self):
@@ -409,6 +428,10 @@ class QuantifierFormula(Formula):
 
     def free_vars(self):
         return self.f.free_vars() - {self.var}
+
+    def variables_in(self):
+        return set.union(self.f.free_vars(), {self.var})
+
 
 class ForAllFormula(QuantifierFormula):
     """
@@ -454,6 +477,9 @@ class TrueFormula(Formula):
     def free_vars(self):
         return set()
 
+    def variables_in(self):
+        return set()
+
     def satisfy(self, model, vector):
         return True
     def __bool__(self):
@@ -475,6 +501,9 @@ class FalseFormula(Formula):
         return "⊥"
 
     def free_vars(self):
+        return set()
+
+    def variables_in(self):
         return set()
 
     def satisfy(self, model, vector):

@@ -13,6 +13,8 @@ from misc import indent
 import sys
 import datetime
 
+from termcolor import colored
+
 global model
 
 def check_formula(formula, target):
@@ -22,7 +24,7 @@ def check_formula(formula, target):
     extension = formula.extension(model, target.arity)
     target = set(target.r)
     if target == extension:
-        print("Formula successfully checked")
+        print(colored("Formula successfully checked","green"))
     else:
         print("Extension len: %s" % len(extension))
         print("Target len:    %s" % len(target))
@@ -33,7 +35,7 @@ def check_formula(formula, target):
         print("Sobran:")
         for t in (extension - target):
             print(" ".join(str(e) for e in t))
-        print("Formula failed!")
+        print(colored("Formula failed!",red))
     print("#"*80)
 
 
@@ -152,7 +154,7 @@ class IndicesTupleGenerator:
         for i in range(quantity):
             result.append(
                 IndicesTupleGenerator(self.ops, self.arity, generators[i], list(self.viejos), list(self.nuevos),
-                                      list(self.sintactico), self.last_term))
+                                      list(self.sintactico), self.last_term)) # TODO FALTA USAR LAS VARIABLES ORIGINALES?
         return result
 
 
@@ -172,14 +174,17 @@ class Block():
         self.tuples = tuples
         self.arity = targets[0].arity
         if formula is None:
+            raise NotImplemented("Bloque sin formula original proveniente del preprocesamiento")
             self.formula = formulas.true()
             self.fs = [formulas.true()] * len(self.targets)
         else:
             self.formula = formula
             self.fs = fs
         if generator is None:
+            prueba = sorted(self.formula.variables_in())
+            print(prueba)
             self.generator = IndicesTupleGenerator(self.operations, self.arity, None, [], list(range(self.arity)),
-                                                   formulas.variables(*range(self.arity)))
+                                                   prueba)
         else:
             self.generator = generator
     
@@ -293,7 +298,9 @@ def is_open_def(model, targets):
     for arity in operations:
         operations[arity].sort(key=lambda o: o.sym)
     operations = dict(operations)
+    print("esto por arrancar con un bloque inicial")
     start_block = Block(operations, tuples, targets, formula=targets[0].pattern.preprocessed_formula())
+    # el posproceso debe reemplazar nombres no solo agregar una formula
     return is_open_def_recursive(start_block)
 
 
@@ -326,12 +333,12 @@ def main():
         for target_rel in targets_rels:
             try:
                 f = is_open_def(model, [target_rel])
-                print("\t%s is definable by %s" % (targets[arity][0].sym,f))
+                print("\t%s is definable by %s" % (targets[arity][0].sym,f)) # a esta f hay que postprocesar
                 if True:
                     check_formula(f,target_rel)
 
                 
-                formula = formula | f
+                formula = formula | (f  & target_rel.pattern.postprocessed_formula())
 
             except Counterexample as e:
                 print("NOT DEFINABLE")
