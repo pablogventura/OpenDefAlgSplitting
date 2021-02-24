@@ -122,7 +122,10 @@ class IndicesTupleGenerator:
             try:
                 f, ti = next(self.generator)
                 fsym = formulas.OpSym(f.sym, f.arity)
-                
+                print(fsym)
+                print(ti)
+                print(self.sintactico)
+                print([self.sintactico[i] for i in ti])
                 self.last_term = fsym(*[self.sintactico[i] for i in ti])
                 return (f, ti)  # devuelve la operacion y la tupla de indices
             
@@ -181,6 +184,8 @@ class Block():
             self.formula = formula
             self.fs = fs
         if generator is None:
+            print(self.formula)
+            assert len(self.formula.variables_in()) > 0
             self.generator = IndicesTupleGenerator(self.operations, self.arity, None, [], list(range(self.arity)),
                                                    sorted(self.formula.variables_in()))
         else:

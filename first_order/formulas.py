@@ -228,7 +228,7 @@ class Formula(object):
         raise NotImplemented
 
     def implied_declaration(self):
-        return sorted(self.free_vars(),key=lambda x: x.sym)
+        return sorted(self.free_vars())
 
     def extension(self,model,arity=None):
         result = set()
