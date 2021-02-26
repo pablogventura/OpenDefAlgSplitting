@@ -35,6 +35,9 @@ class Pattern(object):
         vs = formulas.variables(*list(range(len(self.tuple))))
         representantes = [sorted(cls)[0] for cls in self.pattern]
         vs = [vs[i] for i in representantes]
+        if len(vs) == 1:
+            # caso especial en que hay un top declarado en una unica variable
+            f &= formulas.eq(vs[0],vs[0])
         for v in vs:
             for w in vs:
                 if v is not w:

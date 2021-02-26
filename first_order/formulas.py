@@ -26,17 +26,17 @@ class Term(object):
     def __hash__(self):
         raise NotImplemented
 
-    def __le__(self, other):
+    def __lt__(self, other):
         if self.grade() == other.grade():
-            return repr(self)<=repr(other)
+            return repr(self)<repr(other)
         else:
-            return self.grade() <= other.grade()
+            return self.grade() < other.grade()
     
     def grade(self):
         raise NotImplemented
-
+    
     def __eq__(self,other):
-        return eq(self,other)
+        return hash(self) == hash(other)
 
 class Variable(Term):
     """
@@ -50,10 +50,6 @@ class Variable(Term):
 
     def __repr__(self):
         return self.sym
-
-    def __lt__(self,other):
-        # para poder ordenar variables
-        return self.sym < other.sym
 
     def __hash__(self):
         return hash(self.sym)
@@ -166,26 +162,22 @@ class Formula(object):
     ⊤
 
     """
-    def fresh_variable(self):
-        # devuelve una variable fresca para usar en la formula sin conflictos
-        raise NotImplemented
-    def variables_in(self):
-        # devuelve las variables que se usan en la formula, libres o no.
-        raise NotImplemented
-    def __init__(self):
-        pass
+    def __init__(self,orphan_vars=set()):
+        self.orphan_vars = orphan_vars
 
     def __and__(self, other):
         if isinstance(other, AndFormula):
             return other & self
         elif isinstance(self,TrueFormula):
+            other.orphan_vars |= self.free_vars()
             return other
         elif isinstance(other,TrueFormula):
+            self.orphan_vars |= other.free_vars()
             return self
         elif isinstance(self,FalseFormula) or isinstance(other,FalseFormula):
-            return false()
+            return false(self.free_vars() | other.free_vars())
         elif self == -other:
-            return false()
+            return false(self.free_vars() | other.free_vars())
 
         return AndFormula([self,other])
 
@@ -194,26 +186,35 @@ class Formula(object):
         if isinstance(other, OrFormula):
             return other | self
         elif isinstance(self,FalseFormula):
+            other.orphan_vars |= self.free_vars()
             return other
         elif isinstance(other,FalseFormula):
+            self.orphan_vars |= other.free_vars()
             return self
         elif isinstance(self,TrueFormula) or isinstance(other,TrueFormula):
-            return true()
+            return true(self.free_vars() | other.free_vars())
         elif self == -other:
-            return true()
+            return true(self.free_vars() | other.free_vars())
 
         return OrFormula([self,other])
 
     def __neg__(self):
         if isinstance(self,TrueFormula):
-            return false()
+            return false(self.free_vars())
         elif isinstance(self,FalseFormula):
-            return true()
+            return true(self.free_vars())
 
         return NegFormula(self)
 
     def free_vars(self):
+        return self.orphan_vars
+
+    def fresh_variable(self):
+        # devuelve una variable fresca para usar en la formula sin conflictos
         raise NotImplemented
+    def variables_in(self):
+        # devuelve las variables que se usan en la formula, libres o no.
+        return self.free_vars()
 
     def __bool__(self):
         return isinstance(self,TrueFormula)
@@ -242,11 +243,12 @@ class NegFormula(Formula):
     """
     Negacion de una formula
     """
-    def __init__(self, f):
+    def __init__(self, f, orphan_vars=set()):
+        super().__init__(orphan_vars)
         self.f = f
 
     def __repr__(self):
-        return "¬ %s" % self.f
+        return "¬ %s (%s)" % (self.f, ",".join(str(x) for x in self.free_vars()))
 
     def __neg__(self):
         return self.f
@@ -268,7 +270,8 @@ class BinaryOpFormula(Formula):
     """
     Clase general de las formulas tipo f1 η ... η fn
     """
-    def __init__(self, subformulas):
+    def __init__(self, subformulas, orphan_vars=set()):
+        super().__init__(orphan_vars)
         self.subformulas = frozenset(subformulas)
 
     def free_vars(self):
@@ -293,20 +296,23 @@ class OrFormula(BinaryOpFormula):
     def __repr__(self):
         result = " ∨ ".join(sorted(str(f) for f in self.subformulas))
         result = "(" + result + ")"
+        result += "(" + ",".join(str(x) for x in self.free_vars()) + ")"
         return result
 
     def __or__(self, other):
         if isinstance(self,FalseFormula):
+            other.orphan_vars |= self.free_vars()
             return other
         elif isinstance(other,FalseFormula):
+            self.orphan_vars |= other.free_vars()
             return self
         elif isinstance(other,OrFormula):
             for a in self.subformulas:
                 if -a in other.subformulas:
-                    return true()
+                    return true(self.free_vars()|other.free_vars())
             return OrFormula(self.subformulas | other.subformulas)
         elif -other in self.subformulas:
-            return true()
+            return true(self.free_vars()|other.free_vars())
         return OrFormula(self.subformulas | {other})
 
     def satisfy(self,model,vector):
@@ -323,20 +329,23 @@ class AndFormula(BinaryOpFormula):
     def __repr__(self):
         result = " ∧ ".join(sorted(str(f) for f in self.subformulas))
         result = "(" + result + ")"
+        result += "(" + ",".join(str(x) for x in self.free_vars()) + ")"
         return result
 
     def __and__(self, other):
         if isinstance(self,TrueFormula):
+            other.orphan_vars |= self.free_vars()
             return other
         elif isinstance(other,TrueFormula):
+            self.orphan_vars |= other.free_vars()
             return self
         elif isinstance(other,AndFormula):
             for a in self.subformulas:
                 if -a in other.subformulas:
-                    return false()
+                    return false(self.free_vars()|other.free_vars())
             return AndFormula(self.subformulas | other.subformulas)
         elif -other in self.subformulas:
-            return false()
+            return false(self.free_vars()|other.free_vars())
         return AndFormula(self.subformulas | {other})
 
     def satisfy(self,model,vector):
@@ -369,7 +378,8 @@ class RelFormula(Formula):
     """
     Formula de primer orden de la aplicacion de una relacion
     """
-    def __init__(self, sym, args):
+    def __init__(self, sym, args, orphan_vars=set()):
+        super().__init__(orphan_vars)
         self.sym = sym
         self.args = args
 
@@ -378,6 +388,7 @@ class RelFormula(Formula):
         result += "("
         result += ", ".join(map(repr,self.args))
         result += ")"
+        result += "(" + ",".join(str(x) for x in self.free_vars()) + ")"
         return result
 
     def free_vars(self):
@@ -396,16 +407,17 @@ class EqFormula(Formula):
     """
     Formula de primer orden que es una igualdad entre terminos
     """
-    def __init__(self, t1, t2):
+    def __init__(self, t1, t2, orphan_vars=set()):
+        super().__init__(orphan_vars)
         if not (isinstance(t1, Term) and isinstance(t2, Term)):
             raise ValueError("Must be terms:%s %s" % (t1,t2))
-        if t2 <= t1:
+        if t2 < t1:
             t1,t2 = t2,t1
         self.t1=t1
         self.t2=t2
 
     def __repr__(self):
-        return "%s == %s" % (self.t1,self.t2)
+        return "%s == %s (%s)" % (self.t1,self.t2, ",".join(str(x) for x in self.free_vars()))
 
     def free_vars(self):
         return set.union(self.t1.free_vars(), self.t2.free_vars())
@@ -422,7 +434,8 @@ class QuantifierFormula(Formula):
     """
     Clase general de una formula con cuantificador
     """
-    def __init__(self, var, f):
+    def __init__(self, var, f, orphan_vars=set()):
+        super().__init__(orphan_vars)
         self.var = var
         self.f = f
 
@@ -438,7 +451,7 @@ class ForAllFormula(QuantifierFormula):
     Formula Universal
     """
     def __repr__(self):
-        return "∀ %s %s" % (self.var, self.f)
+        return "∀ %s %s (%s)" % (self.var, self.f, ",".join(str(x) for x in self.free_vars()))
 
     def satisfy(self, model, vector):
         for i in model.universe:
@@ -454,7 +467,7 @@ class ExistsFormula(QuantifierFormula):
     Formula Existencial
     """
     def __repr__(self):
-        return "∃ %s %s" % (self.var, self.f)
+        return "∃ %s %s (%s)" % (self.var, self.f, ",".join(str(x) for x in self.free_vars()))
 
     def satisfy(self, model, vector):
         vector = vector.copy()
@@ -472,13 +485,7 @@ class TrueFormula(Formula):
     """
 
     def __repr__(self):
-        return "⊤"
-
-    def free_vars(self):
-        return set()
-
-    def variables_in(self):
-        return set()
+        return "⊤(%s)" % ",".join(str(x) for x in self.free_vars())
 
     def satisfy(self, model, vector):
         return True
@@ -498,13 +505,7 @@ class FalseFormula(Formula):
     """
 
     def __repr__(self):
-        return "⊥"
-
-    def free_vars(self):
-        return set()
-
-    def variables_in(self):
-        return set()
+        return "⊥(%s)" % ",".join(str(x) for x in self.free_vars())
 
     def satisfy(self, model, vector):
         return False
@@ -532,7 +533,7 @@ def forall(var, formula):
 
 def eq(t1,t2):
     if hash(t1)==hash(t2):
-        return true()
+        return true(t1.free_vars()|t2.free_vars())
     return EqFormula(t1,t2)
 
 def exists(var, formula):
@@ -541,17 +542,17 @@ def exists(var, formula):
     """
     return ExistsFormula(var, formula)
 
-def true():
+def true(orphan_vars=set()):
     """
     Devuelve la formula True
     """
-    return TrueFormula()
+    return TrueFormula(orphan_vars)
 
-def false():
+def false(orphan_vars=set()):
     """
     Devuelve la formula False
     """
-    return FalseFormula()
+    return FalseFormula(orphan_vars)
 
 # Formulas generators
 
