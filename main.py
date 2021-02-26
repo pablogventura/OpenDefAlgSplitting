@@ -4,6 +4,8 @@
 """
 Modulo para calcular HIT de una tupla en un modelo
 """
+#import sys
+#sys.setrecursionlimit(10000)
 from first_order import formulas
 from itertools import product, tee, permutations, chain
 from collections import defaultdict
@@ -35,7 +37,7 @@ def check_formula(formula, target):
         print("Sobran:")
         for t in (extension - target):
             print(" ".join(str(e) for e in t))
-        print(colored("Formula failed!",red))
+        print(colored("Formula failed!","red"))
     print("#"*80)
 
 
@@ -185,6 +187,7 @@ class Block():
             self.fs = fs
         if generator is None:
             print(self.formula)
+            print(self.formula.orphan_vars)
             assert len(self.formula.variables_in()) > 0
             self.generator = IndicesTupleGenerator(self.operations, self.arity, None, [], list(range(self.arity)),
                                                    sorted(self.formula.free_vars()))
