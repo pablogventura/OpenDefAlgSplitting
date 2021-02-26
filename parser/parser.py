@@ -44,10 +44,13 @@ def barajador(t, d1, d2):
 def parse_defformula(line, universe, relations, operations):
     # R(x,y) m(x,y) == j(x,y)
     # print("%s interpreted as:" % line)
+    if "==" in line:
+        raise ValueError("Must use 'eq(x,y)' to represent 'x==y'")
     entorno = dict()
     entorno["model"] = Model(universe, relations, operations)
     entorno.update({r: relations[r].syntax_sym for r in relations})
     entorno.update({f: operations[f].syntax_sym for f in operations})
+    entorno["eq"] = formulas.eq
     sym, line = line.split("(", 1)
     declaracion, formula = line.split(")", 1)
     declaracion = declaracion.split(",")
