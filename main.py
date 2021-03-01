@@ -129,6 +129,7 @@ class IndicesTupleGenerator:
             
             except StopIteration:
                 if self.nuevos:
+                    print(self.ops)
                     self.generator = chain(*[product(self.ops[arity], permutations_forced(self.viejos, self.nuevos, arity)) for arity in self.ops])
                     self.viejos += self.nuevos
                     self.nuevos = []  # todos se gastaron para hacer el nuevo generador
@@ -183,6 +184,8 @@ class Block():
             self.fs = fs
         if generator is None:
             assert len(self.formula.variables_in()) > 0
+            print("operaciones del bloque")
+            print(self.operations)
             self.generator = IndicesTupleGenerator(self.operations, self.arity, None, [], list(range(self.arity)),
                                                    sorted(self.formula.free_vars()))
         else:
@@ -304,6 +307,7 @@ def is_open_def(model, targets):
 
 
 def main():
+    assert sys.version_info >= (3, 7), "Need Python 3.7+"
     global model
     today = datetime.datetime.today()
     print(today.strftime('%Y-%m-%d %H:%M:%S.%f'))
