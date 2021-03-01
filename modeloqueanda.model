@@ -40,4 +40,4 @@ f1 3
 2 2 1 1
 2 2 2 2
 
-T0(x,y,z) -(z==y) & -(z==x) & -(y==x) & (y == f0(z, f0(x, y))) 
+T0(x,y,z) -eq(z,y) & -eq(z,x) & -eq(y,x) & eq(y,f0(z, f0(x, y))) 
