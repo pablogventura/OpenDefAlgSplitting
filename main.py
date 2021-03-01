@@ -104,10 +104,6 @@ class IndicesTupleGenerator:
         """
         self.sintactico = sintactico
         self.viejos = viejos
-        if generator is None:
-            self.generator = iter([])
-        else:
-            self.generator = generator
         self.nuevos = nuevos
         self.arity = arity
         self.ops = operations
@@ -116,6 +112,17 @@ class IndicesTupleGenerator:
         self.last_term = last_term  # ultima term
         
         assert type(self.ops) == dict
+        
+        if generator is None:
+            if 0 in self.ops:
+                #hay constantes entre las operaciones
+                self.generator = ((constant,tuple()) for constant in self.ops[0])
+            else:
+                self.generator = iter([])
+            #chain(*[product(self.ops[arity], permutations_forced(self.viejos, self.nuevos, arity)) for arity in sorted(self.ops.keys())])
+        else:
+            self.generator = generator
+
     
     def step(self):
         if self.forked:
@@ -129,7 +136,6 @@ class IndicesTupleGenerator:
             
             except StopIteration:
                 if self.nuevos:
-                    print(self.ops)
                     self.generator = chain(*[product(self.ops[arity], permutations_forced(self.viejos, self.nuevos, arity)) for arity in self.ops])
                     self.viejos += self.nuevos
                     self.nuevos = []  # todos se gastaron para hacer el nuevo generador
@@ -183,9 +189,7 @@ class Block():
             self.formula = formula
             self.fs = fs
         if generator is None:
-            assert len(self.formula.variables_in()) > 0
-            print("operaciones del bloque")
-            print(self.operations)
+            assert len(self.formula.free_vars()) > 0
             self.generator = IndicesTupleGenerator(self.operations, self.arity, None, [], list(range(self.arity)),
                                                    sorted(self.formula.free_vars()))
         else:
