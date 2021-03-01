@@ -83,6 +83,8 @@ def parse_defformula(line, universe, relations, operations):
 def parse_defrel(line):
     sym, ntuples, arity = line.split()
     ntuples, arity = int(ntuples), int(arity)
+    if arity == 0:
+        raise ValueError("%s is 0-arity relation, to declare a constant declare 0-arity operation" % sym)
     return Relation(sym, arity), ntuples
 
 
