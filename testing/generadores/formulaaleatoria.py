@@ -60,10 +60,13 @@ def formula_aleatoria(p,f, simbolos, aridad):
     Una formula aleatoria con al menos un termino de profundidad exacta p
     con f cantidad de subformulas
     """
+    simbolos_con_constantes = {k:simbolos[k] for k in simbolos if simbolos[k] != 0}
+    simbolos_con_constantes.update({k+"()":simbolos[k] for k in simbolos if simbolos[k] == 0})
+    simbolos = simbolos_con_constantes
     simbolos.update(variables_libres(aridad))
     result = "T0(%s) " % ",".join(reversed(list(variables_libres(aridad).keys())))
     for (a,b) in combinations(variables_libres(aridad),2):
-        result += "-(%s==%s) & " % (a,b)
+        result += "-eq(%s,%s) & " % (a,b)
     # para que agregue que sean todas las variables distintas
     i_exacto = randint(0,f-1)
     for i in range(f):
@@ -72,9 +75,9 @@ def formula_aleatoria(p,f, simbolos, aridad):
             subformula += termino_aleatorio_exacta(p,simbolos)
         else:
             subformula += termino_aleatorio_no_exacta(p,simbolos)
-        subformula += " == "
+        subformula += ", "
         subformula += termino_aleatorio_no_exacta(p,simbolos)
-        subformula = "(%s)" % subformula
+        subformula = "eq(%s)" % subformula
         if randint(0,1) == 1:
             subformula = "-" + subformula
         result += subformula
@@ -96,9 +99,10 @@ def main():
         arity = int(arity)
         sim = sys.argv[2]
         sim = eval(sim)
-    except e:
-        print(e)
+    except:
+
         print("Toma la aridad, y genera la formurmula que agrega a un archivo model que este entrando por la stdin")
+        raise
         return
     try:
         while True:
