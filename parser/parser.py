@@ -14,8 +14,8 @@ class ParserError(Exception):
     Sintax error while parsing
     """
 
-    def __init__(self, line, message):
-        super(ParserError, self).__init__(("Line %s: " % line) + message)
+    def __init__(self, line, path, message):
+        super(ParserError, self).__init__(("Line %s of %s: " % (line, path)) + message)
 
 
 def c_input(line):
@@ -117,7 +117,7 @@ def parser(path=None, preprocess=True, verbose=True):
             f.readline()
             f.seek(0)
         except FileNotFoundError:
-            raise ParserError(-1, "File missing")
+            raise ParserError(-1, path, "File missing")
         except:
             f = open(path, "rb")
     else:
@@ -196,17 +196,17 @@ def parser(path=None, preprocess=True, verbose=True):
                             # TODO APLICACION DE DECORADORES
         except Exception as e:
             raise e
-            raise ParserError(linenumber, e.args[0])
+            raise ParserError(linenumber, path, e.args[0])
             # TODO el manejo de errores no deberia imprimir excepciones por pantalla
     if universe is None:
-        raise ParserError(linenumber, "Universe not defined")
+        raise ParserError(linenumber, path, "Universe not defined")
 
     if current_rel is not None and rel_missing_tuples > 0:
         raise ParserError(
-            linenumber, "Missing tuples for relation %s" % current_rel.sym)
+            linenumber, path, "Missing tuples for relation %s" % current_rel.sym)
     if current_op is not None:
         raise ParserError(
-            linenumber, "Missing tuples for operation %s" % current_op.sym)
+            linenumber, path, "Missing tuples for operation %s" % current_op.sym)
 
     if preprocess:
         prep_relations = set()
