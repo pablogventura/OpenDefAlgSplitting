@@ -280,4 +280,4 @@ Neg 1
 Zero 0
 0
 
-T0(x,y,z) -(z==y) & -(z==x) & -(y==x) & -(Neg(Sum(z, Neg(y))) == Sum(z, y)) | -(Sum(Sum(Zero(), y), Sum(x, y)) == Sum(Neg(z), Sum(x, Sum(y, z))))
+T0(x,y,z) -eq(z,y) & -eq(z,x) & -eq(y,x) & -eq(Neg(Sum(z, Neg(y))), Sum(z, y)) | -eq(Sum(Sum(Zero(), y), Sum(x, y)), Sum(Neg(z), Sum(x, Sum(y, z))))
