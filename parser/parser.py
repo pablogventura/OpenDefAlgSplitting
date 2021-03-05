@@ -72,6 +72,8 @@ def parse_defformula(line, universe, relations, operations):
 
         valores = eval("formula.extension(model,arity)", globals(), entorno)
         valores = {barajador(t, declaracion, formula.implied_declaration()) for t in valores}
+        if len(valores) == 0:
+            print("WARNING: Formula %s has empty extension" % formula)
         result = Relation(sym, len(declaracion))
         result.r = valores
 
