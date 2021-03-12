@@ -24,12 +24,12 @@ def check_formula(formula, target):
     target = set(target.r)
     if target == extension:
         print(colored("Formula successfully checked","green"))
-        print("Extension:")
-        for t in (extension):
-            print(" ".join(str(e) for e in t))
-        print("Target:")
-        for t in (target):
-            print(" ".join(str(e) for e in t))
+        #print("Extension:")
+        #for t in (extension):
+        #    print(" ".join(str(e) for e in t))
+        #print("Target:")
+        #for t in (target):
+        #    print(" ".join(str(e) for e in t))
     else:
         print("Extension len: %s" % len(extension))
         print("Target len:    %s" % len(target))
