@@ -96,8 +96,11 @@ def parse_defop(line):
     return Operation(sym, arity)
 
 
-def parse_tuple(line):
-    return tuple(map(eval, line.split()))
+def parse_tuple(line,universe):
+    t = tuple(map(eval, line.split()))
+    assert all(i in universe for i in t), "Tuple %s is not in the universe %s" % (t,universe)
+    return t
+    
 
 
 def random_delete_tuples(number):
@@ -178,7 +181,7 @@ def parser(path=None, preprocess=True, verbose=True):
                         # continua una relacion
                         try:
                             if rel_missing_tuples:
-                                current_rel.add(parse_tuple(line))
+                                current_rel.add(parse_tuple(line,universe))
                                 rel_missing_tuples -= 1
                             if not rel_missing_tuples:
                                 relations[current_rel.sym] = current_rel
@@ -190,7 +193,7 @@ def parser(path=None, preprocess=True, verbose=True):
                     elif current_op is not None:
                         # continua una operacion
                         if op_missing_tuples:
-                            current_op.add(parse_tuple(line))
+                            current_op.add(parse_tuple(line,universe))
                             op_missing_tuples -= 1
                         if not op_missing_tuples:
                             operations[current_op.sym] = current_op
