@@ -35,9 +35,13 @@ def random_target(universe,tarity,density):
     tuplas = permutations(universe, r=tarity)
     card = len(universe)
     cantidad = factorial(card) // factorial(card-tarity)
-    print("T0 %s %s\n" % (cantidad, tarity))
+    target = []
     for i in iter_sample_fast(tuplas, cantidad):
-        print(" ".join(map(str, i)))
+        if random.random() < density:
+            target.append(" ".join(map(str, i)))
+    print("T0 %s %s\n" % (len(target), tarity))
+    for t in target:
+        print(t)
 
 def main():
     try:
