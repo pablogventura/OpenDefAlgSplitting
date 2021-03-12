@@ -20,9 +20,6 @@ from termcolor import colored
 global model
 
 def check_formula(formula, target):
-    print("#"*80)
-    print("Probando formula:")
-    print(formula)
     extension = formula.extension(model, target.arity)
     target = set(target.r)
     if target == extension:
@@ -313,9 +310,11 @@ def is_open_def(model, targets):
 def main():
     assert sys.version_info >= (3, 7), "Need Python 3.7+"
     global model
+    print_formulas = False # para no generar salidas gigantes
+    check_solution = True
+    check_partial_solutions = True
     today = datetime.datetime.today()
     print(today.strftime('%Y-%m-%d %H:%M:%S.%f'))
-    check_solution = True
     try:
         model = parser(sys.argv[1], preprocess=True)
     except IndexError:
@@ -340,8 +339,10 @@ def main():
         for target_rel in targets_rels:
             try:
                 f = is_open_def(model, [target_rel])
-                print("\t%s is definable by %s" % (targets[arity][0].sym,f))
-                if True:
+                print("\t%s is definable" % targets[arity][0].sym)
+                if print_formulas:
+                    print("by %s" % f)
+                if check_partial_solutions:
                     check_formula(f,target_rel)
 
                 
@@ -354,7 +355,8 @@ def main():
                 print("Elapsed time: %s" % time_hit)
                 return
     print("DEFINABLE")
-    print("\t%s := %s" % (targets_rels[0].sym[:-2], formula))
+    if print_formulas:
+        print("\t%s := %s" % (targets_rels[0].sym[:-2], formula))
     time_hit = time() - start_hit
     print("Elapsed time: %s" % time_hit)
     if check_solution:
