@@ -316,7 +316,7 @@ def is_open_def(model, targets):
 def main():
     assert sys.version_info >= (3, 7), "Need Python 3.7+"
     global model
-    print_formulas = True # para no generar salidas gigantes
+    print_formulas = False # para no generar salidas gigantes
     check_solution = True
     check_partial_solutions = True
     today = datetime.datetime.today()
