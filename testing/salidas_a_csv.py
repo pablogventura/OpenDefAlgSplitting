@@ -50,6 +50,7 @@ for i, f in enumerate(files):
             
         if timeout == True:
             elapsed_time = float('inf')
+            definable = None
         else:
             if definable is None and not_definable is None and not error:
                 error = 44
