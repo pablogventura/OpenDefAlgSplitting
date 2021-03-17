@@ -13,21 +13,32 @@ wr = csv.writer(results_file, quoting=csv.QUOTE_ALL)
 for i, f in enumerate(files):
     if f.endswith(".stderr"):
         filename = f
-        print(f)
+        cardinality = int(filename.split("/")[-1].split("_")[0])
+        if "grupo_abeliano" in filename:
+            estructura = "grupo_abeliano"
+        elif "boole" in filename:
+            estructura = "boole"
+        elif "alg_random" in filename:
+            estructura = "alg_random"
+        else:
+            raise ValueError("No es de ninguna estructura conocida?")
+        if "formula" in filename:
+            target = "formula"
+        elif "target" in filename:
+            target = "random"
+        else:
+            raise ValueError("No es de ningun tipo conocido?")
         definable = None
         not_definable = None
         timeout = None
         elapsed_time = None
         error = None
-        #print(Path(f).stat().st_size)
         if Path(f).stat().st_size > 0:
-            
             datafile = open(f,"r")
             for line in datafile:
                 if 'Traceback' in line or 'ERROR' in line or "failed" in line:
                     error = 28
                 if 'NOT DEFINABLE' in line:
-                    print("NODEF")
                     not_definable = True
                 elif 'DEFINABLE' in line:
                     definable = True
@@ -40,15 +51,15 @@ for i, f in enumerate(files):
         if timeout == True:
             elapsed_time = float('inf')
         else:
-            if definable is None and not_definable is None:
+            if definable is None and not_definable is None and not error:
                 error = 44
             elif definable == not_definable:
                 ValueError("Inconsistencia")
             elif not_definable:
                 definable = False
-            if elapsed_time == None:
+            if elapsed_time == None and not error:
                 error = 50
         if error is None:
             error = False
-        wr.writerow([filename,definable,elapsed_time,error])
+        wr.writerow([filename, estructura, target, definable, cardinality, elapsed_time, error])
 results_file.close()
