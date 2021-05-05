@@ -26,4 +26,4 @@ def generar(*args, cuantity=100):
 for i in [3,4,5,6,7,8]: # con 2**9 ya se hacen 50 gigas los ejemplos de alg_random
     generar("grupo_abeliano_diverso",i)
     generar("boole", i)
-    generar("alg_random",2**i,0,0,[2,3])
+    generar("alg_random",2**i,0,0,[2])

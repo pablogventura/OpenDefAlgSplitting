@@ -38,7 +38,7 @@ def generar(aridad, archivo):
     filename = os.path.join(directorio,str(c)+"_T"+str(aridad)+"_"+os.path.basename(archivo)[:-2])
     
     if "alg_random_wt" in archivo:
-        sim={'f0':2,'f1':3}
+        sim={'f0':2}
     elif "boole_wt" in archivo:
         sim={'m':2,'j':2}
     elif "grupo_abeliano_diverso_wt" in archivo:
