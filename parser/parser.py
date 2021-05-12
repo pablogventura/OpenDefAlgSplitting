@@ -22,7 +22,11 @@ def c_input(line):
     """
     Clean input
     """
-    line = line.decode("utf-8")
+    try:
+        line = line.decode("utf-8")
+    except AttributeError:
+        # ya es un string
+        pass
     if "#" in line:
         line = line[:line.find("#")]
     return line.strip()
