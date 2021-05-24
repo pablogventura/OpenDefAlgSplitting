@@ -9,6 +9,7 @@ files = [os.path.join(dp, f) for dp, dn, fn in os.walk(directory) for f in fn]
 
 results_file = open("results.csv", 'w')
 wr = csv.writer(results_file, quoting=csv.QUOTE_ALL)
+wr.writerow(["filename", "estructura", "target", "definable", "cardinality", "elapsed_time", "error"])
 
 for i, f in enumerate(files):
     if f.endswith(".stderr"):
