@@ -80,7 +80,7 @@ def formula_aleatoria(p,f, simbolos, aridad):
         subformula = "eq(%s)" % subformula
         #if randint(0,1) == 1:
         #    subformula = "-" + subformula
-        #result += subformula
+        result += subformula
         if randint(0,1) == 1:
             result += " | "
         else:
