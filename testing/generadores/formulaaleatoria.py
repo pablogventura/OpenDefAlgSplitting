@@ -54,6 +54,12 @@ def termino_aleatorio_no_exacta(p, simbolos):
     p = randint(0,p)
     return termino_aleatorio_exacta(p,simbolos)
 
+def termino_aleatorio_no_exacta_no_variable(p, simbolos):
+    """
+    Devuelve un termino aleatorio de profundidad p
+    """
+    p = randint(1,p)
+    return termino_aleatorio_exacta(p,simbolos)
 
 def formula_aleatoria(p,f, simbolos, aridad):
     """
@@ -74,9 +80,9 @@ def formula_aleatoria(p,f, simbolos, aridad):
         if i == i_exacto:
             subformula += termino_aleatorio_exacta(p,simbolos)
         else:
-            subformula += termino_aleatorio_no_exacta(p,simbolos)
+            subformula += termino_aleatorio_no_exacta_no_variable(p,simbolos)
         subformula += ", "
-        subformula += termino_aleatorio_no_exacta(p,simbolos)
+        subformula += termino_aleatorio_no_exacta_no_variable(p,simbolos)
         subformula = "eq(%s)" % subformula
         #if randint(0,1) == 1:
         #    subformula = "-" + subformula
