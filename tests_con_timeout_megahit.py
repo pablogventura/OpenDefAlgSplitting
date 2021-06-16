@@ -15,7 +15,7 @@ try:
             print("%s%%" % (i / len(files)))
             while len(procs) >= cores:
                 procs = [p for p in procs if p.is_running()]
-            procs.append(ShellProc('timeout -s 9 120m python3 ../OpenDefAlg/main.py "%s" > "%s" 2 > "%s"' % (f, f.replace(".model", ".megahitold"), f.replace(".model", ".stderr"))))
+            procs.append(ShellProc('timeout -s 9 250m python3 ../OpenDefAlg/main.py "%s" > "%s" 2 > "%s"' % (f, f.replace(".model", ".megahitold"), f.replace(".model", ".stderr"))))
 
 except KeyboardInterrupt:
     pass
