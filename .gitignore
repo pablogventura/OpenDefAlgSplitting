@@ -2,3 +2,4 @@ testing/generadores/modelos/
 __pycache__
 slurm*.out
 *.pyc
+venv/
