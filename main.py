@@ -5,7 +5,6 @@
 Modulo para calcular HIT de una tupla en un modelo
 """
 import sys
-sys.setrecursionlimit(500000)  # necesario con elección por information gain (más profundidad)
 from first_order import formulas
 from itertools import product, tee, permutations, chain
 from collections import defaultdict
@@ -21,7 +20,7 @@ from math import log2
 global model
 # Si True, en cada paso se elige (op, ti) que maximiza information gain.
 # Si False, se usa el orden fijo del generador (comportamiento original).
-USE_INFORMATION_GAIN = True
+USE_INFORMATION_GAIN = False
 
 
 def _entropy(in_count, out_count):
@@ -383,27 +382,46 @@ class Block():
         return result
 
 
-def is_open_def_recursive(block):
+def is_open_def_iterative(block):
     """
-    Algoritmo "posta", es recursivo
-        un bloque tiene tuplas acompañadas por su historia parcial y un hit parcial que etiqueta al bloque
-    input: un bloque mixto
-    output:
+    Versión iterativa del algoritmo: misma lógica que is_open_def_recursive
+    pero con pila explícita para evitar límite de recursión de Python.
     """
-    if block.is_all_in_targets():
-        return block.formula
-    elif block.is_disjunt_to_targets():
-        return formulas.false()
-    elif block.finished():
-        raise Counterexample(block.tuples)
-        # como es un bloque mixto, no es defel hit parcial esta terminado, no definible y termino
-    blocks = block.step()
-    formula = formulas.false()
-    for b in blocks:
-        recursive_call = is_open_def_recursive(b)
-        formula = formula | recursive_call
-    
-    return formula
+    stack = [("block", block)]
+    accumulate_stack = []  # list of (children, results_list) waiting for more results
+    while stack:
+        tag, top = stack.pop()
+        if tag == "block":
+            b = top
+            if b.is_all_in_targets():
+                stack.append(("result", b.formula))
+            elif b.is_disjunt_to_targets():
+                stack.append(("result", formulas.false()))
+            elif b.finished():
+                raise Counterexample(b.tuples)
+            else:
+                children = b.step()
+                if len(children) == 1 and children[0] is b:
+                    stack.append(("block", b))
+                else:
+                    accumulate_stack.append((children, []))
+                    for child in reversed(children):
+                        stack.append(("block", child))
+        elif tag == "result":
+            formula = top
+            if not accumulate_stack:
+                return formula
+            children, results = accumulate_stack.pop()
+            results.append(formula)
+            if len(results) == len(children):
+                combined = formulas.false()
+                for r in results:
+                    combined = combined | r
+                stack.append(("result", combined))
+            else:
+                accumulate_stack.append((children, results))
+                stack.append(("block", children[len(results)]))
+    return formulas.false()
 
 
 def is_open_def(model, targets):
@@ -420,7 +438,7 @@ def is_open_def(model, targets):
     operations = dict(operations)
     start_block = Block(operations, tuples, targets, formula=targets[0].pattern.preprocessed_formula())
     # el posproceso debe reemplazar nombres no solo agregar una formula
-    return is_open_def_recursive(start_block)
+    return is_open_def_iterative(start_block)
 
 
 def main():
