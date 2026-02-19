@@ -16,14 +16,13 @@ import datetime
 
 from termcolor import colored
 from math import log2
-import random
 
 global model
 # Si True, en cada paso se elige (op, ti) que maximiza information gain.
 # Si False, se usa el orden fijo del generador (comportamiento original).
 USE_INFORMATION_GAIN = False
 # Si USE_INFORMATION_GAIN y este valor es int, se muestrean solo K candidatos (None = todos).
-IG_SAMPLE = None
+IG_SAMPLE = 20
 
 
 def _entropy(in_count, out_count):
@@ -294,7 +293,6 @@ class Block():
                 if not cand_list:
                     self.generator.finished = True
                     return [self]
-                random.shuffle(cand_list)
                 cand_gen = iter(cand_list[: IG_SAMPLE])
             else:
                 first = next(cand_gen, None)
@@ -445,7 +443,11 @@ def is_open_def(model, targets):
     #assert len(targets) == 1
     assert not model.relations
     
-    tuples = set(TupleHistory(t, targets) for t in permutations(model.universe, r=targets[0].arity))
+    # Lista ordenada para iteración determinista (set daría orden arbitrario entre ejecuciones).
+    tuples = sorted(
+        [TupleHistory(t, targets) for t in permutations(model.universe, r=targets[0].arity)],
+        key=lambda th: th.t,
+    )
     operations = defaultdict(list)
     for op in model.operations.values():
         operations[op.arity].append(op)
