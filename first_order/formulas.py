@@ -126,6 +126,10 @@ class OpTerm(Term):
             return model.operations[self.sym.op]()
 
 # FORMULAS
+# Memoización de fórmulas para evitar crear duplicados en & y |
+_formula_and_cache = {}
+_formula_or_cache = {}
+
 
 class Formula(object):
     """
@@ -179,7 +183,10 @@ class Formula(object):
         elif self == -other:
             return false(self.free_vars() | other.free_vars())
 
-        return AndFormula([self,other])
+        key = (id(self), id(other)) if id(self) < id(other) else (id(other), id(self))
+        if key not in _formula_and_cache:
+            _formula_and_cache[key] = AndFormula([self, other])
+        return _formula_and_cache[key]
 
     def __or__(self, other):
 
@@ -196,7 +203,10 @@ class Formula(object):
         elif self == -other:
             return true(self.free_vars() | other.free_vars())
 
-        return OrFormula([self,other])
+        key = (id(self), id(other)) if id(self) < id(other) else (id(other), id(self))
+        if key not in _formula_or_cache:
+            _formula_or_cache[key] = OrFormula([self, other])
+        return _formula_or_cache[key]
 
     def __neg__(self):
         if isinstance(self,TrueFormula):

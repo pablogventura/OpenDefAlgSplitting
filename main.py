@@ -16,11 +16,14 @@ import datetime
 
 from termcolor import colored
 from math import log2
+import random
 
 global model
 # Si True, en cada paso se elige (op, ti) que maximiza information gain.
 # Si False, se usa el orden fijo del generador (comportamiento original).
 USE_INFORMATION_GAIN = False
+# Si USE_INFORMATION_GAIN y este valor es int, se muestrean solo K candidatos (None = todos).
+IG_SAMPLE = None
 
 
 def _entropy(in_count, out_count):
@@ -33,22 +36,19 @@ def _entropy(in_count, out_count):
     return -(p * log2(p) if p > 0 else 0) - (q * log2(q) if q > 0 else 0)
 
 
-def _information_gain(tuples, partition):
+def _information_gain_from_counts(n, in_total, partition_counts):
     """
-    Information gain de una partición respecto a la polaridad (in/out of target).
-    partition: dict (index, polarity) -> list of TupleHistory
+    Information gain a partir de conteos.
+    partition_counts: dict clave -> (in_count, out_count); la clave puede ser (index, in_target).
     """
-    n = len(tuples)
     if n == 0:
         return 0.0
-    in_total = sum(1 for th in tuples if all(tg or tg is None for tg in th.polarity))
     out_total = n - in_total
     h_before = _entropy(in_total, out_total)
     h_after = 0.0
-    for group in partition.values():
-        g_in = sum(1 for th in group if all(tg or tg is None for tg in th.polarity))
-        g_out = len(group) - g_in
-        h_after += (len(group) / n) * _entropy(g_in, g_out)
+    for (g_in, g_out) in partition_counts.values():
+        group_size = g_in + g_out
+        h_after += (group_size / n) * _entropy(g_in, g_out)
     return h_before - h_after
 
 def check_formula(formula, target):
@@ -90,44 +90,47 @@ def permutations_forced(not_forced_elems, forced_elems, repeat):
 class TupleHistory:
     """
     Clase de la tupla con su historia
-    Recibe una tupla de indices desde el generador y hace crecer la historia
+    Recibe una tupla de indices desde el generador y hace crecer la historia.
+    _index_map mantiene valor -> índice para búsqueda O(1).
+    in_target cachea la polaridad (in/out of target) para evitar recalcular.
     """
     
     def __init__(self, t, targets):
         self.t = t
         self.history = list(t)
+        self._index_map = {x: i for i, x in enumerate(self.history)}
         self.polarity = tuple(tg(*t) for tg in targets)
-        self.has_generated = False  # TODO capaz si genero al arrancar
+        self.in_target = all(tg or tg is None for tg in self.polarity)
+        self.has_generated = False
     
     def __eq__(self, other):
         return self.t == other.t and self.history == other.history
     
     def step(self, op, ti):
         """
-        Toma la operacion y la tupla de indices
-        Devuelve el indice devuelto
+        Toma la operacion y la tupla de indices. Devuelve el indice devuelto.
+        Búsqueda O(1) vía _index_map.
         """
-        x = op(*[self.history[i] for i in ti])  # resultado de la operacion
-        try:
-            xi = self.history.index(x)  # indice en la historia
+        x = op(*[self.history[i] for i in ti])
+        xi = self._index_map.get(x)
+        if xi is not None:
             self.has_generated = False
             return xi
-        except ValueError:
-            self.history.append(x)
-            self.has_generated = True
-            return len(self.history) - 1
+        self.history.append(x)
+        self._index_map[x] = len(self.history) - 1
+        self.has_generated = True
+        return len(self.history) - 1
 
     def simulate_step(self, op, ti):
         """
         Como step() pero sin mutar: devuelve (indice, has_generated).
-        Sirve para predecir la partición y calcular information gain.
+        Usa _index_map para O(1).
         """
         x = op(*[self.history[i] for i in ti])
-        try:
-            xi = self.history.index(x)
+        xi = self._index_map.get(x)
+        if xi is not None:
             return (xi, False)
-        except ValueError:
-            return (len(self.history), True)
+        return (len(self.history), True)
     
     def __hash__(self):
         return hash((self.t, tuple(self.history)))
@@ -157,6 +160,7 @@ class IndicesTupleGenerator:
         self.forked = False
         self.finished = False
         self.last_term = last_term  # ultima term
+        self._formula_diff_cache = {}  # (last_term, index) -> formula, para memoización
         
         assert type(self.ops) == dict
         
@@ -192,13 +196,15 @@ class IndicesTupleGenerator:
     
     def enumerate_candidates(self):
         """
-        Lista de (op, ti) posibles para el estado actual (viejos, nuevos).
-        Usado para elegir el paso por information gain en lugar del orden fijo.
+        Generador de (op, ti) posibles para el estado actual (viejos, nuevos).
+        Usado para elegir el paso por information gain; permite corte temprano sin materializar todos.
         """
-        return list(chain(*[
-            product(self.ops[arity], permutations_forced(self.viejos, self.nuevos, arity))
-            for arity in self.ops
-        ]))
+        for arity in self.ops:
+            for op_ti in product(
+                self.ops[arity],
+                permutations_forced(self.viejos, self.nuevos, arity),
+            ):
+                yield op_ti
 
     def set_last_term(self, op, ti):
         """Fija last_term para la (op, ti) elegida (p. ej. por IG) antes de aplicar el paso."""
@@ -206,8 +212,11 @@ class IndicesTupleGenerator:
         self.last_term = fsym(*[self.sintactico[i] for i in ti])
 
     def formula_diferenciadora(self, index):
-        """Asumo que acaban de diferenciarse"""
-        return formulas.eq(self.last_term, self.sintactico[index])
+        """Asumo que acaban de diferenciarse. Resultado memoizado."""
+        key = (self.last_term, index)
+        if key not in self._formula_diff_cache:
+            self._formula_diff_cache[key] = formulas.eq(self.last_term, self.sintactico[index])
+        return self._formula_diff_cache[key]
     
     def hubo_nuevo(self):
         if self.forked:
@@ -219,12 +228,16 @@ class IndicesTupleGenerator:
         if self.forked:
             raise ValueError("This generator was forked!")
         self.forked = True
+        # tee() solo cuando hay split (quantity >= 2); cada hijo necesita su propia copia del iterador.
         result = []
         generators = tee(self.generator, quantity)
         for i in range(quantity):
-            result.append(
-                IndicesTupleGenerator(self.ops, self.arity, generators[i], list(self.viejos), list(self.nuevos),
-                                      list(self.sintactico), self.last_term)) # TODO FALTA USAR LAS VARIABLES ORIGINALES?
+            g = IndicesTupleGenerator(
+                self.ops, self.arity, generators[i], list(self.viejos), list(self.nuevos),
+                list(self.sintactico), self.last_term,
+            )
+            g._formula_diff_cache = dict(self._formula_diff_cache)
+            result.append(g)
         return result
 
 
@@ -262,116 +275,119 @@ class Block():
         
     
     def is_all_in_targets(self):
-        return all(tg or tg is None for th in self.tuples for tg in th.polarity)
+        return all(th.in_target for th in self.tuples)
     
     def is_disjunt_to_targets(self):
-        return all((not tg) or tg is None for th in self.tuples for tg in th.polarity)
+        return all(not th.in_target for th in self.tuples)
     
     def step(self):
         """
         Hace un paso en hit a todas las tuplas.
-        Si USE_INFORMATION_GAIN: elige (op, ti) que maximiza information gain.
-        Si no: usa el orden fijo del generador (comportamiento original).
-        Devuelve una lista de nuevos bloques.
+        Si USE_INFORMATION_GAIN: elige (op, ti) que maximiza information gain (conteos, corte temprano, muestreo).
+        Si no: usa el orden fijo del generador.
+        Un solo dict result[(index, polarity)] para la partición.
         """
         if USE_INFORMATION_GAIN:
-            candidates = self.generator.enumerate_candidates()
-            if not candidates:
-                self.generator.finished = True
-                return [self]
+            cand_gen = self.generator.enumerate_candidates()
+            if IG_SAMPLE is not None:
+                cand_list = list(cand_gen)
+                if not cand_list:
+                    self.generator.finished = True
+                    return [self]
+                random.shuffle(cand_list)
+                cand_gen = iter(cand_list[: IG_SAMPLE])
+            else:
+                first = next(cand_gen, None)
+                if first is None:
+                    self.generator.finished = True
+                    return [self]
+                cand_gen = chain([first], cand_gen)
+            n = len(self.tuples)
+            in_total = sum(1 for th in self.tuples if th.in_target)
+            h_before = _entropy(in_total, n - in_total) if n else 0.0
             best_ig = -1.0
             best_op, best_ti = None, None
-            for op, ti in candidates:
-                part = defaultdict(list)
+            for op, ti in cand_gen:
+                part = defaultdict(lambda: [0, 0])  # (index, in_target) -> [in_c, out_c]
                 for th in self.tuples:
                     idx, _ = th.simulate_step(op, ti)
-                    part[(idx, th.polarity)].append(th)
-                ig = _information_gain(self.tuples, part)
+                    key = (idx, th.in_target)
+                    if th.in_target:
+                        part[key][0] += 1
+                    else:
+                        part[key][1] += 1
+                ig = _information_gain_from_counts(n, in_total, {k: tuple(v) for k, v in part.items()})
                 if ig > best_ig:
                     best_ig = ig
                     best_op, best_ti = op, ti
+                    if h_before > 0 and ig >= h_before - 1e-12:
+                        break
+            if best_op is None:
+                self.generator.finished = True
+                return [self]
             op, ti = best_op, best_ti
             self.generator.set_last_term(op, ti)
         else:
-            result = defaultdict(lambda: defaultdict(list))
             try:
                 op, ti = self.generator.step()
             except TypeError:
                 assert self.generator.finished
                 return [self]
+            any_has_gen = False
+            result = defaultdict(list)
             for th in self.tuples:
-                result[th.step(op, ti)][th.polarity].append(th)
-            if len(result.keys()) == 1:
-                for i, index in enumerate(result.keys()):
-                    tuples_new_block = result[index]
-                    if any(th[0].has_generated for th in tuples_new_block.values()):
-                        assert all(th[0].has_generated for th in tuples_new_block.values())
-                        self.generator.hubo_nuevo()
+                idx = th.step(op, ti)
+                any_has_gen = any_has_gen or th.has_generated
+                result[idx].append(th)
+            if len(result) == 1:
+                if any_has_gen:
+                    self.generator.hubo_nuevo()
                 return [self]
-            generators = self.generator.fork(len(result.keys()))
+            generators = self.generator.fork(len(result))
             results = []
             fneg = formulas.true()
             negados = []
-            for i, index in enumerate(result.keys()):
-                tuples_new_block = result[index]
-                if any(th[0].has_generated for th in tuples_new_block.values()):
+            for i, (index, tuples_new_block) in enumerate(result.items()):
+                if any(th.has_generated for th in tuples_new_block):
                     generators[i].hubo_nuevo()
                     negados.append((i, index))
                 else:
                     f = self.formula & generators[i].formula_diferenciadora(index)
                     fneg = fneg & -generators[i].formula_diferenciadora(index)
-                    tuples_new_block = [th for l in tuples_new_block.values() for th in l]
                     results.append(Block(self.operations, tuples_new_block, self.targets, generators[i], f, self.fs))
             for i, index in negados:
                 tuples_new_block = result[index]
-                tuples_new_block = [th for l in tuples_new_block.values() for th in l]
                 f = self.formula & fneg
                 results.append(Block(self.operations, tuples_new_block, self.targets, generators[i], f, self.fs))
             return results
 
-        result = defaultdict(lambda: defaultdict(list))
+        result = defaultdict(list)
         for th in self.tuples:
-            result[th.step(op, ti)][th.polarity].append(th)
-
-        if len(result.keys()) == 1:
-            # todas las tuplas avanzaron en el bloque pero no se dividio
-            # no hay necesidad de tocar formulas, porque todo se sigue cumpliendo
-            # TODO ACA ANOTO SI HUBO NUEVO
-            for i, index in enumerate(result.keys()):
-                tuples_new_block = result[index]
-                if any(th[0].has_generated for th in tuples_new_block.values()):
-                    assert all(th[0].has_generated for th in tuples_new_block.values())
-                    self.generator.hubo_nuevo()
+            idx = th.step(op, ti)
+            result[idx].append(th)
+        if len(result) == 1:
+            only_index = next(iter(result))
+            if any(th.has_generated for th in result[only_index]):
+                self.generator.hubo_nuevo()
             return [self]
-        else:
-            # el bloque se ha dividido
-            generators = self.generator.fork(len(result.keys()))
-            results = []
-            fneg = formulas.true()
-            negados = []
-            for i, index in enumerate(result.keys()):
-                tuples_new_block = result[index]
-                if any(th[0].has_generated for th in tuples_new_block.values()):
-                    # alguien genero dentro del bloque (todos generan)
-                    generators[i].hubo_nuevo()
-                    negados.append((i,index)) # se genero alguien distinto a todos
-                else:
-                    # el bloque no ha generado nada nuevo
-                    f = self.formula & generators[i].formula_diferenciadora(index)  # formula valida
-                    
-                    fneg = fneg & -generators[i].formula_diferenciadora(index)
-                    # estoy diciendo que es distinto solamente los que se acaban de dividir
-                    # es suficiente porque la formula del bloque que se esta dividiendo
-                    # implica que es distinto a los demas
-                    tuples_new_block = [th for l in tuples_new_block.values() for th in l]
-                    results.append(Block(self.operations, tuples_new_block, self.targets, generators[i], f, self.fs))
-            for i, index in negados:
-                tuples_new_block = result[index]
-                tuples_new_block = [th for l in tuples_new_block.values() for th in l]
-                f = self.formula & fneg
+        num_groups = len(result)
+        generators = self.generator.fork(num_groups)
+        results = []
+        fneg = formulas.true()
+        negados = []
+        for i, (index, tuples_new_block) in enumerate(result.items()):
+            if any(th.has_generated for th in tuples_new_block):
+                generators[i].hubo_nuevo()
+                negados.append((i, index))
+            else:
+                f = self.formula & generators[i].formula_diferenciadora(index)
+                fneg = fneg & -generators[i].formula_diferenciadora(index)
                 results.append(Block(self.operations, tuples_new_block, self.targets, generators[i], f, self.fs))
-                
-            return results
+        for i, index in negados:
+            tuples_new_block = result[index]
+            f = self.formula & fneg
+            results.append(Block(self.operations, tuples_new_block, self.targets, generators[i], f, self.fs))
+        return results
     
     def __repr__(self):
         result = "Block(\n"
@@ -446,7 +462,7 @@ def main():
     global model
     print_formulas = True
     check_solution = True
-    check_partial_solutions = True
+    check_partial_solutions = False
     today = datetime.datetime.today()
     print(today.strftime('%Y-%m-%d %H:%M:%S.%f'))
     try:
@@ -477,7 +493,7 @@ def main():
                 if print_formulas:
                     print("by %s" % f)
                 if check_partial_solutions:
-                    check_formula(f,target_rel)
+                    check_formula(f, target_rel)
 
                 
                 formula = formula | (f  & target_rel.pattern.postprocessed_formula()) # aca se posprocesa
