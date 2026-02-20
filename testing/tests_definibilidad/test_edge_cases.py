@@ -167,6 +167,26 @@ class TestModeloExistenteRaro:
         assert _es_definible(salida) or _es_no_definible(salida)
 
 
+class TestModelosStress:
+    """Modelos grandes o de estrés para validar el algoritmo."""
+
+    def test_gigante(self):
+        """gigante.model: modelo grande para validar correctitud."""
+        model_path = PROJECT_ROOT / "model_examples" / "gigante.model"
+        if not model_path.exists():
+            pytest.skip("gigante.model no existe")
+        salida = run_main(str(model_path), timeout=180)
+        assert _es_definible(salida) or _es_no_definible(salida)
+
+    def test_estres_paralelo(self):
+        """estres_paralelo.model: modelo para pruebas de estrés."""
+        model_path = PROJECT_ROOT / "model_examples" / "estres_paralelo.model"
+        if not model_path.exists():
+            pytest.skip("estres_paralelo.model no existe")
+        salida = run_main(str(model_path), timeout=180)
+        assert _es_definible(salida) or _es_no_definible(salida)
+
+
 class TestAlgebraConConstantes:
     """Álgebras con operaciones 0-arias (constantes)."""
 
