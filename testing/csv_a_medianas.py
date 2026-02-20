@@ -5,9 +5,8 @@ import statistics
 import sys
 from collections import defaultdict
 
-csv_file: str = sys.argv[1]
-
-csv_file = open(csv_file)
+csv_path: str = sys.argv[1]
+csv_file = open(csv_path)
 reader = csv.reader(csv_file, delimiter=",", quotechar='"')
 datos = defaultdict(lambda: defaultdict(list))
 # wr.writerow([filename, estructura, target, definable, cardinality, elapsed_time, error])
@@ -32,7 +31,7 @@ for _fn, estructura, target, definable, cardinality, elapsed_time, error in read
 csv_file.close()
 
 
-datos_procesados = defaultdict(lambda: defaultdict(list))
+datos_procesados: dict = defaultdict(lambda: {})
 for estructura, definable in datos:
     for cardinality in datos[(estructura, definable)]:
         cantidad = len(datos[(estructura, definable)][cardinality])

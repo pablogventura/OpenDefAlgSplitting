@@ -15,13 +15,13 @@ class Pattern:
 
     def __init__(self, t: tuple) -> None:
         self.tuple = t
-        self.pruned_tuple = []
+        pruned_list: list = []
         pattern = defaultdict(set)
         for i, a in enumerate(t):
             pattern[a].add(i)
             if len(pattern[a]) == 1:
-                self.pruned_tuple.append(a)
-        self.pruned_tuple = tuple(self.pruned_tuple)
+                pruned_list.append(a)
+        self.pruned_tuple = tuple(pruned_list)
         self.pattern = frozenset(frozenset(s) for s in pattern.values())
 
     def name(self):
@@ -72,7 +72,7 @@ class Pattern:
         result = "Pattern(\n"
         result += indent(f"tuple = {self.tuple}\n")
         result += indent(f"pattern = {self.pattern}\n")
-        result += indent(f"formula = {self.formula()}\n")
+        result += indent(f"formula = {self.preprocessed_formula()}\n")
         result += ")"
         return result
 
@@ -141,6 +141,12 @@ def preprocesamiento2(target: Relation) -> list[Relation]:
         arity = len(first_tuple)
         "_".join(str(i) for i in first_tuple)
         result.append(
-            Relation(target.sym + pattern.name(), arity, pruned_relations[pattern], pattern, target)
+            Relation(
+                target.sym + pattern.name(),
+                arity,
+                set(pruned_relations[pattern]),
+                pattern,
+                target,
+            )
         )
     return result

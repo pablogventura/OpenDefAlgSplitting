@@ -6,16 +6,16 @@ from typing import Any
 
 def generar(*args: Any, cuantity: int = 100) -> None:
     # genera alg random
-    args = [str(i) for i in args]
+    args_list = [str(i) for i in args]
 
     for i in range(cuantity):
-        filename = os.path.join(args[0] + "_wt", "_".join(args[1:] + [str(i)]))
+        filename = os.path.join(args_list[0] + "_wt", "_".join(args_list[1:] + [str(i)]))
         filename += ".modelwt"
         if os.path.isfile(filename):
             continue
         filename = '"' + filename + '"'
         try:
-            os.mkdir(args[0] + "_wt")
+            os.mkdir(args_list[0] + "_wt")
         except OSError:
             pass
         script = "genera_" + args[0] + ".py"

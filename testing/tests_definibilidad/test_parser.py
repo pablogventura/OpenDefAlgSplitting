@@ -2,8 +2,8 @@
 Tests del parser: formato, errores, relaciones por fórmula.
 """
 
-from parser import preprocessing
-from parser.parser import parser
+from parser import preprocessing  # type: ignore[reportAttributeAccessIssue]
+from parser.parser import ParserError, parser
 from pathlib import Path
 
 import pytest
@@ -43,17 +43,17 @@ class TestParserErrores:
 
     def test_rechaza_relacion_0_aria(self):
         """El parser rechaza relaciones de aridad 0."""
-        with pytest.raises(ValueError, match="0-arity relation"):
+        with pytest.raises(ParserError, match="0-arity relation"):
             parser(str(FIXTURES / "rel_0arity.model"), verbose=False)
 
     def test_rechaza_igual_en_formula(self):
         """Rechaza uso de == en fórmula; debe usarse eq()."""
-        with pytest.raises(ValueError, match="eq\\(x,y\\)|=="):
+        with pytest.raises(ParserError, match="eq\\(x,y\\)|=="):
             parser(str(FIXTURES / "formula_con_igual.model"), verbose=False)
 
     def test_rechaza_variables_repetidas_en_formula(self):
         """Rechaza declaración de fórmula con variables repetidas."""
-        with pytest.raises(ValueError, match="repitiendo variables|variables"):
+        with pytest.raises(ParserError, match="repitiendo variables|variables"):
             parser(str(FIXTURES / "formula_vars_repetidas.model"), verbose=False)
 
 

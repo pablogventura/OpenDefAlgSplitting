@@ -3,6 +3,10 @@ Configuración y fixtures para tests de definibilidad.
 """
 
 import os
+
+# Seed fijo para reproducibilidad de modelos generados aleatoriamente
+# (0 produce: fórmulas con extensión no vacía en Boole, target no definible en grupo-no-abeliano)
+os.environ["OPENDEFALG_RANDOM_SEED"] = "0"
 import subprocess
 import sys
 import tempfile

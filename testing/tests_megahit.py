@@ -9,7 +9,7 @@ procs = []
 try:
     import os
 
-    files = [os.path.join(dp, f) for dp, dn, fn in os.walk("testing/mega_hit_test") for f in fn]
+    files = [os.path.join(dp, f) for dp, _dn, fn in os.walk("testing/mega_hit_test") for f in fn]
     for i, f in enumerate(files):
         if f.endswith(".model") and not os.path.exists(f.replace(".model", ".megahit")):
             print("%s%%" % (i / len(files)))

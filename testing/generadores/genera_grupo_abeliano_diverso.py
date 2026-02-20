@@ -1,6 +1,10 @@
+import os
 import random
 import sys
 from itertools import product
+
+if "OPENDEFALG_RANDOM_SEED" in os.environ:
+    random.seed(int(os.environ["OPENDEFALG_RANDOM_SEED"]))
 
 # todo grupo abeliano finito es un producto directo de Z_k
 

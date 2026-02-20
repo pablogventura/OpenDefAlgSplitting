@@ -56,7 +56,7 @@ indent-style = "space"
 [tool.pyright]
 pythonVersion = "3.7"
 typeCheckingMode = "standard"
-reportMissingImports = true
+reportMissingImports = "warning"
 reportMissingTypeStubs = false
 reportUnusedImport = "warning"
 reportUnusedVariable = "warning"

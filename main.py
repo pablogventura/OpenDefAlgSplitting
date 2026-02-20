@@ -13,7 +13,7 @@ from itertools import chain, permutations, product, tee
 from math import log2
 from parser.parser import parser
 from time import time
-from typing import Any, Iterator
+from typing import Any, Iterator, cast
 
 from termcolor import colored
 
@@ -109,6 +109,8 @@ class TupleHistory:
         self.has_generated = False
 
     def __eq__(self, other: object) -> bool:
+        if not isinstance(other, TupleHistory):
+            return NotImplemented
         return self.t == other.t and self.history == other.history
 
     def step(self, op: Any, ti: tuple[int, ...]) -> int:
@@ -221,7 +223,7 @@ class IndicesTupleGenerator:
         Usado para elegir el paso por information gain; permite corte temprano sin materializar todos.
         """
         for arity in self.ops:
-            yield from product(
+            yield from product(  # pyright: ignore[reportReturnType]
                 self.ops[arity],
                 permutations_forced(self.viejos, self.nuevos, arity),
             )
@@ -355,22 +357,23 @@ class Block:
                         part[key][0] += 1
                     else:
                         part[key][1] += 1
-                ig = _information_gain_from_counts(
-                    n, in_total, {k: tuple(v) for k, v in part.items()}
-                )
+                part_counts: dict[tuple[int, bool], tuple[int, int]] = {
+                    k: (v[0], v[1]) for k, v in part.items()
+                }
+                ig = _information_gain_from_counts(n, in_total, part_counts)
                 if ig > best_ig:
                     best_ig = ig
                     best_op, best_ti = op, ti
                     if h_before > 0 and ig >= h_before - 1e-12:
                         break
-            if best_op is None:
+            if best_op is None or best_ti is None:
                 self.generator.finished = True
                 return [self]
             op, ti = best_op, best_ti
             self.generator.set_last_term(op, ti)
         else:
             try:
-                op, ti = self.generator.step()
+                op, ti = self.generator.step()  # pyright: ignore[reportGeneralTypeIssues]
             except TypeError:
                 assert self.generator.finished
                 return [self]
@@ -463,12 +466,12 @@ def is_open_def_iterative(block: Block) -> formulas.Formula:
     Versión iterativa del algoritmo: misma lógica que is_open_def_recursive
     pero con pila explícita para evitar límite de recursión de Python.
     """
-    stack = [("block", block)]
+    stack: list[tuple[str, Block | formulas.Formula]] = [("block", block)]
     accumulate_stack = []  # list of (children, results_list) waiting for more results
     while stack:
         tag, top = stack.pop()
         if tag == "block":
-            b = top
+            b = cast(Block, top)
             if b.is_all_in_targets():
                 stack.append(("result", b.formula))
             elif b.is_disjunt_to_targets():
@@ -484,7 +487,7 @@ def is_open_def_iterative(block: Block) -> formulas.Formula:
                     for child in reversed(children):
                         stack.append(("block", child))
         elif tag == "result":
-            formula = top
+            formula = cast(formulas.Formula, top)
             if not accumulate_stack:
                 return formula
             children, results = accumulate_stack.pop()

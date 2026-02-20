@@ -6,7 +6,7 @@ from functools import reduce  # Valid in Python 2.6+, required in Python 3
 import matplotlib.pyplot as plt
 
 results = defaultdict(list)
-files = [os.path.join(dp, f) for dp, dn, fn in os.walk("testing/mega_hit_test") for f in fn]
+files = [os.path.join(dp, f) for dp, _dn, fn in os.walk("testing/mega_hit_test") for f in fn]
 for _i, f in enumerate(files):
     if f.endswith(".megahit"):
         _, _, dir, filename = f.split("/")
@@ -65,10 +65,10 @@ for k in new_new_results2:
 
 print(new_new_results)
 
-ax = plt.subplot(111)
-ax.set_ylabel("Time ($s$)")
-ax.set_xlabel("Cardinality of Universe")
-ax.set_title("Amount of time to decide definability")
+ax = plt.subplot(111)  # pyright: ignore[reportAttributeAccessIssue]
+ax.set_ylabel("Time ($s$)")  # pyright: ignore[reportAttributeAccessIssue]
+ax.set_xlabel("Cardinality of Universe")  # pyright: ignore[reportAttributeAccessIssue]
+ax.set_title("Amount of time to decide definability")  # pyright: ignore[reportAttributeAccessIssue]
 
 # plt.semilogx(2)
 plt.loglog(basex=2, basey=2)

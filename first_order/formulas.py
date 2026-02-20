@@ -287,7 +287,7 @@ class NegFormula(Formula):
     def __repr__(self) -> str:
         return "¬ {} ({})".format(self.f, ",".join(str(x) for x in self.free_vars()))
 
-    def __neg__(self) -> Formula:
+    def __neg__(self) -> Formula:  # pyright: ignore[reportIncompatibleMethodOverride]
         return self.f
 
     def __hash__(self) -> int:
@@ -754,4 +754,4 @@ def bolsas(model: Any, arity: int) -> dict[Formula, list]:
                     nuevas[foriginal & (-formula)].append(tupla)
         result = nuevas
 
-    return dict(result)
+    return dict(result)  # type: ignore[return-value]

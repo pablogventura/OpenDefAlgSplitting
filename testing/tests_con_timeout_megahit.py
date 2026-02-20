@@ -10,7 +10,7 @@ from testing.shell_non_blocking import ShellProc
 cores = 13
 procs = []
 try:
-    files = [os.path.join(dp, f) for dp, dn, fn in os.walk("testing/") for f in fn]
+    files = [os.path.join(dp, f) for dp, _dn, fn in os.walk("testing/") for f in fn]
     shuffle(files)
     for i, f in enumerate(files):
         if f.endswith(".model") and not os.path.exists(f.replace(".model", ".megahitold")):

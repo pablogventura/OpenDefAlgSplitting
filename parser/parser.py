@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import gzip
 import sys
-from parser import preprocessing
+from parser import preprocessing  # type: ignore[reportAttributeAccessIssue]
 from typing import Any, Callable
 
 from first_order import formulas
@@ -25,13 +25,11 @@ def c_input(line: str | bytes) -> str:
     """
     Clean input
     """
-    try:
+    if isinstance(line, bytes):
         line = line.decode("utf-8")
-    except AttributeError:
-        # ya es un string
-        pass
     if "#" in line:
-        line = line[: line.find("#")]
+        idx = line.find("#")
+        line = line[:idx] if idx >= 0 else line
     return line.strip()
 
 
@@ -78,7 +76,8 @@ def parse_defformula(line: str, universe: list, relations: dict, operations: dic
         entorno["arity"] = len(vars)
 
         valores = eval("formula.extension(model,arity)", globals(), entorno)
-        valores = {barajador(t, declaracion, formula.implied_declaration()) for t in valores}
+        decl_list = formula.implied_declaration()
+        valores = {barajador(t, declaracion, tuple(decl_list)) for t in valores}
         if len(valores) == 0:
             print(f"WARNING: Formula {formula} has empty extension")
         result = Relation(sym, len(declaracion))
@@ -143,6 +142,7 @@ def parser(path: str | None = None, preprocess: bool = True, verbose: bool = Tru
     op_missing_tuples = 0
     universe = None
     decorators = []
+    linenumber = -1
     for linenumber, line in enumerate(f):
         assert current_op is None or current_rel is None
         try:

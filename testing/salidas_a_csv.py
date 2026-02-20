@@ -7,7 +7,7 @@ from pathlib import Path
 
 directory: str = sys.argv[1]
 
-files = [os.path.join(dp, f) for dp, dn, fn in os.walk(directory) for f in fn]
+files = [os.path.join(dp, f) for dp, _dn, fn in os.walk(directory) for f in fn]
 
 results_file = open("results.csv", "w")
 wr = csv.writer(results_file, quoting=csv.QUOTE_ALL)

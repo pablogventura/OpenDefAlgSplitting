@@ -1,5 +1,6 @@
 import os
 from collections import defaultdict
+from typing import cast
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -11,7 +12,7 @@ import numpy as np
 # print(float(f.readline()[24:-5]) # minion
 # f.close()
 results = defaultdict(list)
-files = [os.path.join(dp, f) for dp, dn, fn in os.walk("testing") for f in fn]
+files = [os.path.join(dp, f) for dp, _dn, fn in os.walk("testing") for f in fn]
 for _i, f in enumerate(files):
     if f.endswith(".hvm"):
         _, dir, filename = f.split("/")
@@ -62,7 +63,8 @@ minion_means = tuple(v[2] for v in data)
 ind = np.arange(len(hit_means))  # the x locations for the groups
 width = 0.35  # the width of the bars
 
-fig, ax = plt.subplots()
+fig, axes = plt.subplots()
+ax = cast(plt.Axes, axes)
 rects1 = ax.bar(
     ind - width / 2,
     hit_means,
@@ -79,8 +81,8 @@ rects2 = ax.bar(
 # Add some text for labels, title and custom x-axis tick labels, etc.
 ax.set_ylabel("Time ($s$)")
 ax.set_title("Amounts of time by families of algebras")
-ax.set_xticks(ind)
-ax.set_xticklabels(v[0] for v in data)
+ax.set_xticks(ind)  # pyright: ignore[reportCallIssue]
+ax.set_xticklabels(v[0] for v in data)  # pyright: ignore[reportCallIssue]
 ax.legend()
 plt.semilogy(np.exp(1 / 5.0))
 
