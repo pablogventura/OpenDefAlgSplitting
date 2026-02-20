@@ -1,6 +1,7 @@
-import psutil
 import subprocess
 from typing import Union
+
+import psutil
 
 
 class ShellProc:

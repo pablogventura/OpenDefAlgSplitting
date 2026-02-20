@@ -1,11 +1,10 @@
-# -*- coding: utf-8 -*-
 #!/usr/bin/env python
 
 from __future__ import annotations
 
 from itertools import product
+
 from misc import indent
-from typing import Any
 
 
 class PartialOrderedDict(dict):
@@ -28,7 +27,7 @@ class PartialOrderedDict(dict):
         return True
 
 
-class Model(object):
+class Model:
     universe: list
     relations: dict
     operations: dict
@@ -77,7 +76,7 @@ class Model(object):
         return PartialOrderedDict({r: len(self.relations[r]) for r in subtype})
 
     def __repr__(self):
-        result = "Model(universe=%s,\nrelations=\n" % self.universe
+        result = f"Model(universe={self.universe},\nrelations=\n"
         for sym in sorted(self.relations):
             result += indent(self.relations[sym]) + "\n"
         result += "operations=\n"
@@ -98,7 +97,7 @@ class Model(object):
         for op in self.operations:
             rel = self.operations[op].graph_rel()
             relations[rel.sym] = rel
-        return Model(self.universe, relations, dict())
+        return Model(self.universe, relations, {})
 
     def rel_minion_name(self, r: str) -> str:
         return r.replace("|", "b").replace("-", "e")
@@ -106,10 +105,8 @@ class Model(object):
     def minion_tables(self, subtype: set | list) -> str:
         result = ""
         for r in subtype:
-            result += "%s %s %s\n" % (
-                self.rel_minion_name(r),
-                len(self.relations[r]),
-                self.relations[r].arity,
+            result += (
+                f"{self.rel_minion_name(r)} {len(self.relations[r])} {self.relations[r].arity}\n"
             )
             for t in self.relations[r]:
                 result += " ".join(str(self.universe.index(x)) for x in t) + "\n"
@@ -124,5 +121,5 @@ class Model(object):
             for t in self.relations[r]:
                 result += "table([f["
                 result += "],f[".join(str(self.universe.index(x)) for x in t)
-                result += "]],%s)\n" % self.rel_minion_name(r)
+                result += f"]],{self.rel_minion_name(r)})\n"
         return result

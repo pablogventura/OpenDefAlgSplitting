@@ -1,6 +1,6 @@
 import gzip
 import os
-from random import randint
+from glob import glob
 
 
 def c_input(line):
@@ -34,7 +34,7 @@ def generar(aridad, densidad, archivo):
     directorio = os.path.join(directorio, "targets")
     try:
         os.mkdir(directorio)
-    except:
+    except OSError:
         pass
     filename = os.path.join(
         directorio,
@@ -42,12 +42,9 @@ def generar(aridad, densidad, archivo):
     )
 
     os.system(
-        'gunzip -c "%s" | python3 randomtargetpure.py %s %s | gzip > "%s" '
-        % (archivo, aridad, densidad, filename)
+        f'gunzip -c "{archivo}" | python3 randomtargetpure.py {aridad} {densidad} | gzip > "{filename}" '
     )
 
-
-from glob import glob
 
 for archivo in (y for x in os.walk(".") for y in glob(os.path.join(x[0], "*.modelwt"))):
     for aridad in [2]:

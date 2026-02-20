@@ -1,15 +1,17 @@
-from collections import defaultdict
-import os
-from functools import reduce  # Valid in Python 2.6+, required in Python 3
 import operator
+import os
+from collections import defaultdict
+from functools import reduce  # Valid in Python 2.6+, required in Python 3
+
+import matplotlib.pyplot as plt
 
 results = defaultdict(list)
 files = [os.path.join(dp, f) for dp, dn, fn in os.walk("testing/mega_hit_test") for f in fn]
-for i, f in enumerate(files):
+for _i, f in enumerate(files):
     if f.endswith(".megahit"):
         _, _, dir, filename = f.split("/")
         filename = filename[: -len(".megahit")]
-        file = open(f, "r")
+        file = open(f)
         try:
             counter = 0
             while "*" not in file.readline():  # asteriscos basura
@@ -24,16 +26,16 @@ for i, f in enumerate(files):
                 s, _ = filename.split("_", 1)
                 size = int(s)
             elif dir.endswith("grupo_abeliano"):
-                size = reduce(operator.mul, list(int(x) for x in filename.split("_"))[:-1], 1)
+                size = reduce(operator.mul, [int(x) for x in filename.split("_")][:-1], 1)
                 print(size)
             else:
                 size = map(int, filename.split("_"))
 
             results[(dir, size)].append(float(file.readline()[14:]))
         except ValueError:
-            print("ERROR in file %s" % f.replace(" ", "\ "))
+            print("ERROR in file {}".format(f.replace(" ", r"\ ")))
         file.close()
-new_results = dict()
+new_results = {}
 for k in results:
     value = 0
     size = len(results[k])
@@ -45,7 +47,7 @@ for k in results:
     new_results[k] = value
     print()
     print(k)
-    print("Time: %s" % value)
+    print(f"Time: {value}")
 
 new_new_results = defaultdict(list)
 for k in new_results:
@@ -54,7 +56,7 @@ cantidad = -4
 new_new_results2 = {k: sorted(new_new_results[k], key=lambda x: x[0]) for k in new_new_results}
 
 print(new_new_results2)
-new_new_results = dict()
+new_new_results = {}
 for k in new_new_results2:
     if len(new_new_results2[k][cantidad:]) == -cantidad:
         new_new_results[k] = new_new_results2[k][cantidad:]
@@ -62,10 +64,6 @@ for k in new_new_results2:
         new_new_results[k] = new_new_results2[k]
 
 print(new_new_results)
-
-import matplotlib.pyplot as plt
-import numpy as np
-
 
 ax = plt.subplot(111)
 ax.set_ylabel("Time ($s$)")

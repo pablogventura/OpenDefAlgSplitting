@@ -1,16 +1,14 @@
-# -*- coding: utf-8 -*-
 """
 Tests del parser: formato, errores, relaciones por fórmula.
 """
 
-import pytest
+from parser import preprocessing
+from parser.parser import parser
 from pathlib import Path
 
-from parser.parser import parser, ParserError
-from parser import preprocessing
-from first_order.relops import Relation
-from first_order.models import Model
+import pytest
 
+from first_order.relops import Relation
 
 FIXTURES = Path(__file__).parent / "fixtures"
 MODEL_EXAMPLES = Path(__file__).parent.parent.parent / "model_examples"

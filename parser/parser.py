@@ -1,16 +1,15 @@
-# -*- coding: utf-8 -*-
 # !/usr/bin/env python
 
 from __future__ import annotations
 
+import gzip
 import sys
-from typing import Any, Callable, Union
+from parser import preprocessing
+from typing import Any, Callable
 
+from first_order import formulas
 from first_order.models import Model
 from first_order.relops import Operation, Relation
-from parser import preprocessing
-from first_order import formulas
-import gzip
 
 
 class ParserError(Exception):
@@ -19,7 +18,7 @@ class ParserError(Exception):
     """
 
     def __init__(self, line: int, path: str | None, message: str) -> None:
-        super(ParserError, self).__init__(("Line %s of %s: " % (line, path)) + message)
+        super().__init__((f"Line {line} of {path}: ") + message)
 
 
 def c_input(line: str | bytes) -> str:
@@ -54,7 +53,7 @@ def parse_defformula(line: str, universe: list, relations: dict, operations: dic
     # print("%s interpreted as:" % line)
     if "==" in line:
         raise ValueError("Must use 'eq(x,y)' to represent 'x==y'")
-    entorno = dict()
+    entorno = {}
     entorno["model"] = Model(universe, relations, operations)
     entorno.update({r: relations[r].syntax_sym for r in relations})
     entorno.update({f: operations[f].syntax_sym for f in operations})
@@ -70,10 +69,10 @@ def parse_defformula(line: str, universe: list, relations: dict, operations: dic
     entorno.update(vars)
     try:
         formula = eval(formula, globals(), entorno)
-    except NameError:
-        raise ValueError("Missing variables in the declaration of %s" % sym)
+    except NameError as err:
+        raise ValueError(f"Missing variables in the declaration of {sym}") from err
     if set(formula.free_vars()) > set(declaracion):
-        raise ValueError("Missing variables in the declaration of %s" % sym)
+        raise ValueError(f"Missing variables in the declaration of {sym}")
     if isinstance(formula, formulas.Formula):
         entorno["formula"] = formula
         entorno["arity"] = len(vars)
@@ -81,13 +80,13 @@ def parse_defformula(line: str, universe: list, relations: dict, operations: dic
         valores = eval("formula.extension(model,arity)", globals(), entorno)
         valores = {barajador(t, declaracion, formula.implied_declaration()) for t in valores}
         if len(valores) == 0:
-            print("WARNING: Formula %s has empty extension" % formula)
+            print(f"WARNING: Formula {formula} has empty extension")
         result = Relation(sym, len(declaracion))
         result.r = valores
 
         return result
     elif isinstance(formula, formulas.Term):
-        raise NotImplemented("Functions declared by formula not implemented")
+        raise NotImplementedError("Functions declared by formula not implemented")
 
 
 def parse_defrel(line: str) -> tuple[Any, int]:
@@ -95,7 +94,7 @@ def parse_defrel(line: str) -> tuple[Any, int]:
     ntuples, arity = int(ntuples), int(arity)
     if arity == 0:
         raise ValueError(
-            "%s is 0-arity relation, to declare a constant declare 0-arity operation" % sym
+            f"{sym} is 0-arity relation, to declare a constant declare 0-arity operation"
         )
     return Relation(sym, arity), ntuples
 
@@ -108,13 +107,13 @@ def parse_defop(line: str) -> Any:
 
 def parse_tuple(line: str, universe: list) -> tuple:
     t = tuple(map(eval, line.split()))
-    assert all(i in universe for i in t), "Tuple %s is not in the universe %s" % (t, universe)
+    assert all(i in universe for i in t), f"Tuple {t} is not in the universe {universe}"
     return t
 
 
 def random_delete_tuples(number: int) -> Callable[[Any], Any]:
     def f(rel):
-        for i in range(number):
+        for _i in range(number):
             rel.r.pop()
         return rel
 
@@ -131,8 +130,8 @@ def parser(path: str | None = None, preprocess: bool = True, verbose: bool = Tru
             f.readline()
             f.seek(0)
         except FileNotFoundError:
-            raise ParserError(-1, path, "File missing")
-        except:
+            raise ParserError(-1, path, "File missing") from None
+        except OSError:
             f = open(path, "rb")
     else:
         f = sys.stdin
@@ -158,7 +157,7 @@ def parser(path: str | None = None, preprocess: bool = True, verbose: bool = Tru
                     elif "(" in line:
                         # empieza una relacion u operacion definida por formula
                         relop = parse_defformula(line, universe, relations, operations)
-                        if type(relop) == Relation:
+                        if isinstance(relop, Relation):
                             for d in reversed(decorators):
                                 relop = d(relop)
                             decorators = []
@@ -173,22 +172,21 @@ def parser(path: str | None = None, preprocess: bool = True, verbose: bool = Tru
                         current_op = parse_defop(line)
                         op_missing_tuples = len(universe) ** current_op.arity
                         if verbose:
-                            print("universe %s" % universe)
-                            print("%s tuples: %s" % (current_op.sym, op_missing_tuples))
+                            print(f"universe {universe}")
+                            print(f"{current_op.sym} tuples: {op_missing_tuples}")
                     elif line.count(" ") == 2:
                         # empieza una relacion
                         current_rel, rel_missing_tuples = parse_defrel(line)
                         if verbose:
                             try:
                                 print(
-                                    "%s density: %f"
-                                    % (
+                                    "{} density: {:f}".format(
                                         current_rel.sym,
                                         float(rel_missing_tuples)
                                         / (len(universe) ** current_rel.arity),
                                     )
                                 )
-                            except:
+                            except (ValueError, ZeroDivisionError):
                                 print("WARNING: no pudo calcular la densidad")
                 else:
                     if current_rel is not None:
@@ -214,16 +212,15 @@ def parser(path: str | None = None, preprocess: bool = True, verbose: bool = Tru
                             current_op = None
                             # TODO APLICACION DE DECORADORES
         except Exception as e:
-            raise e
-            raise ParserError(linenumber, path, e.args[0])
+            raise ParserError(linenumber, path, str(e.args[0]) if e.args else str(e)) from e
             # TODO el manejo de errores no deberia imprimir excepciones por pantalla
     if universe is None:
         raise ParserError(linenumber, path, "Universe not defined")
 
     if current_rel is not None and rel_missing_tuples > 0:
-        raise ParserError(linenumber, path, "Missing tuples for relation %s" % current_rel.sym)
+        raise ParserError(linenumber, path, f"Missing tuples for relation {current_rel.sym}")
     if current_op is not None:
-        raise ParserError(linenumber, path, "Missing tuples for operation %s" % current_op.sym)
+        raise ParserError(linenumber, path, f"Missing tuples for operation {current_op.sym}")
 
     if preprocess:
         prep_relations = set()
@@ -233,7 +230,7 @@ def parser(path: str | None = None, preprocess: bool = True, verbose: bool = Tru
                 prep_relations = prep_relations.union(preprocessing.preprocesamiento2(rel))
         relations = {sym: relations[sym] for sym in relations if not sym.startswith("T")}
         if verbose:
-            print("Target thinning turned T into %s Ts" % len(prep_relations))
+            print(f"Target thinning turned T into {len(prep_relations)} Ts")
         for r in prep_relations:
             relations[r.sym] = r
 

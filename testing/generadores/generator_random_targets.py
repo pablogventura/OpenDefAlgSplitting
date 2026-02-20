@@ -1,10 +1,9 @@
 import os
-from random import randint
 
 
 def generar(directory, cardinality, arity, densidad, cuantity=100):
 
-    for i in range(cuantity):
+    for _i in range(cuantity):
         filename = os.path.join(directory, "_".join([str(cardinality), str(arity), str(densidad)]))
         filename += "_NODEF.target.gz"
         if os.path.isfile(filename):
@@ -12,16 +11,16 @@ def generar(directory, cardinality, arity, densidad, cuantity=100):
         filename = '"' + filename + '"'
         try:
             os.mkdir(directory)
-        except:
+        except OSError:
             pass
 
         print(
-            "python3 randomtarget_separado.py %s %s %s" % (cardinality, arity, densidad)
+            f"python3 randomtarget_separado.py {cardinality} {arity} {densidad}"
             + " | gzip > "
             + filename
         )
         os.system(
-            "python3 randomtarget_separado.py %s %s %s" % (cardinality, arity, densidad)
+            f"python3 randomtarget_separado.py {cardinality} {arity} {densidad}"
             + " | gzip > "
             + filename
         )

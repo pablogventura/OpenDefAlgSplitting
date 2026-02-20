@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-from random import randint
 from typing import Any
 
 
@@ -17,7 +16,7 @@ def generar(*args: Any, cuantity: int = 100) -> None:
         filename = '"' + filename + '"'
         try:
             os.mkdir(args[0] + "_wt")
-        except:
+        except OSError:
             pass
         script = "genera_" + args[0] + ".py"
         argumentos = '" "'.join(args[1:])

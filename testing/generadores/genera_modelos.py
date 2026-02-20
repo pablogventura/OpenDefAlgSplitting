@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Interfaz unificada para generar ejemplos de modelos de álgebras finitas.
 
@@ -10,7 +9,6 @@ Uso típico:
 """
 
 import argparse
-import io
 import subprocess
 import sys
 from pathlib import Path

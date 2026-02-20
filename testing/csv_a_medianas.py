@@ -1,20 +1,17 @@
 from __future__ import annotations
 
 import csv
-import os
-import sys
 import statistics
-from pathlib import Path
+import sys
 from collections import defaultdict
-from typing import Any, Optional
 
 csv_file: str = sys.argv[1]
 
-csv_file = open(csv_file, "r")
+csv_file = open(csv_file)
 reader = csv.reader(csv_file, delimiter=",", quotechar='"')
 datos = defaultdict(lambda: defaultdict(list))
 # wr.writerow([filename, estructura, target, definable, cardinality, elapsed_time, error])
-for fn, estructura, target, definable, cardinality, elapsed_time, error in reader:
+for _fn, estructura, target, definable, cardinality, elapsed_time, error in reader:
     error = eval(error)
     if not error:
         if not definable:

@@ -16,7 +16,7 @@ try:
             while len(procs) >= cores:
                 procs = [p for p in procs if p.is_running()]
             procs.append(
-                ShellProc('python3 main.py "%s" > "%s"' % (f, f.replace(".model", ".posta")))
+                ShellProc('python3 main.py "{}" > "{}"'.format(f, f.replace(".model", ".posta")))
             )
 
 except KeyboardInterrupt:

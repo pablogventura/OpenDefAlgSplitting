@@ -1,6 +1,6 @@
-from random import choice, randint
-from itertools import combinations
 import sys
+from itertools import combinations
+from random import choice, randint
 
 
 def variables_libres(cantidad):
@@ -46,7 +46,7 @@ def termino_aleatorio_exacta(p, simbolos):
     result = ""
     if subterminos:
         result = ", ".join(subterminos)
-        result = "(%s)" % result
+        result = f"({result})"
     result = s + result
     return result
 
@@ -76,9 +76,9 @@ def formula_aleatoria(p, f, simbolos, aridad):
     simbolos_con_constantes.update({k + "()": simbolos[k] for k in simbolos if simbolos[k] == 0})
     simbolos = simbolos_con_constantes
     simbolos.update(variables_libres(aridad))
-    result = "T0(%s) " % ",".join(reversed(list(variables_libres(aridad).keys())))
+    result = "T0({}) ".format(",".join(reversed(list(variables_libres(aridad).keys()))))
     for a, b in combinations(variables_libres(aridad), 2):
-        result += "-eq(%s,%s) & " % (a, b)
+        result += f"-eq({a},{b}) & "
     # para que agregue que sean todas las variables distintas
     i_exacto = randint(0, f - 1)
     for i in range(f):
@@ -89,7 +89,7 @@ def formula_aleatoria(p, f, simbolos, aridad):
             subformula += termino_aleatorio_no_exacta_no_variable(p, simbolos)
         subformula += ", "
         subformula += termino_aleatorio_no_exacta_no_variable(p, simbolos)
-        subformula = "eq(%s)" % subformula
+        subformula = f"eq({subformula})"
         # if randint(0,1) == 1:
         #    subformula = "-" + subformula
         result += subformula

@@ -17,8 +17,9 @@ try:
                 procs = [p for p in procs if p.is_running()]
             procs.append(
                 ShellProc(
-                    'timeout -s 9 30m python3 main.py "%s" > "%s"'
-                    % (f, f.replace(".model", ".megahit"))
+                    'timeout -s 9 30m python3 main.py "{}" > "{}"'.format(
+                        f, f.replace(".model", ".megahit")
+                    )
                 )
             )
 

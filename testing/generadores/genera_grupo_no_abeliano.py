@@ -1,6 +1,6 @@
-from itertools import product, permutations
-from random import sample
 import sys
+from itertools import permutations, product
+from random import sample
 
 
 # para todo grupo hay un k tal que es un subgrupo del grupo de k-permutaciones
@@ -32,7 +32,7 @@ def generador(k, cant_generadores, cardinalidad_exacta=None):
     q para cuando uno quiere que sea clavado un universo y vaya reintentando
     """
     permutaciones = list(permutations(range(k)))
-    print("# Cantidad de permutaciones posibles: %s" % len(permutaciones))
+    print(f"# Cantidad de permutaciones posibles: {len(permutaciones)}")
 
     sigo = True
     universe = set(sample(permutaciones, cant_generadores))
@@ -53,7 +53,7 @@ def generador(k, cant_generadores, cardinalidad_exacta=None):
             universe.add(tuple(range(k)))
             sigo = True
     universe = sorted(universe)
-    print("# Quedaron: %s" % len(universe))
+    print(f"# Quedaron: {len(universe)}")
     print(" ".join(str(i) for i in range(len(universe))))
     print("")
     print("Id 0")
@@ -74,14 +74,14 @@ def generador(k, cant_generadores, cardinalidad_exacta=None):
 def main():
     try:
         k, cant_generadores = [int(i) for i in sys.argv[1:3]]
-    except:
+    except (ValueError, IndexError):
         print("Toma un k tal que para el grupo de k permutaciones")
         print("Toma una cantidad de generadores original para empezar a generar el subgrupo")
         print("Toma opcionalmente el tamaño del subgrupo generado")
         sys.exit(1)
     try:
         cardinalidad_exacta = int(sys.argv[3])
-    except:
+    except (ValueError, IndexError):
         cardinalidad_exacta = None
     generador(k, cant_generadores, cardinalidad_exacta)
 

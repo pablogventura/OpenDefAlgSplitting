@@ -1,6 +1,6 @@
 import gzip
 import os
-from random import randint
+from glob import glob
 
 
 def c_input(line):
@@ -33,7 +33,7 @@ def generar(aridad, archivo):
     directorio = os.path.join(directorio, "formula")
     try:
         os.mkdir(directorio)
-    except:
+    except OSError:
         pass
     filename = os.path.join(
         directorio, str(c) + "_T" + str(aridad) + "_" + os.path.basename(archivo)[:-2]
@@ -46,15 +46,12 @@ def generar(aridad, archivo):
     elif "grupo_abeliano_diverso_wt" in archivo:
         sim = {"Sum": 2, "Neg": 1, "Zero": 0}
     else:
-        assert (False, "No es de ninguna signatura conocida")
+        raise ValueError("No es de ninguna signatura conocida")
 
     os.system(
-        'gunzip -c "%s" | python3 formulaaleatoria.py %s "%s" | gzip > "%s" '
-        % (archivo, aridad, sim, filename)
+        f'gunzip -c "{archivo}" | python3 formulaaleatoria.py {aridad} "{sim}" | gzip > "{filename}" '
     )
 
-
-from glob import glob
 
 for archivo in (y for x in os.walk(".") for y in glob(os.path.join(x[0], "*.modelwt"))):
     for aridad in [3]:

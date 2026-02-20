@@ -4,7 +4,6 @@ import csv
 import os
 import sys
 from pathlib import Path
-from typing import Any, Optional
 
 directory: str = sys.argv[1]
 
@@ -16,7 +15,7 @@ wr.writerow(
     ["filename", "estructura", "target", "definable", "cardinality", "elapsed_time", "error"]
 )
 
-for i, f in enumerate(files):
+for _i, f in enumerate(files):
     if f.endswith(".stderr"):
         filename = f
         cardinality = int(filename.split("/")[-1].split("_")[0])
@@ -34,13 +33,13 @@ for i, f in enumerate(files):
             target = "random"
         else:
             raise ValueError("No es de ningun tipo conocido?")
-        definable: Optional[bool] = None
-        not_definable: Optional[bool] = None
-        timeout: Optional[bool] = None
-        elapsed_time: Optional[float] = None
-        error: Optional[int | bool] = None
+        definable: bool | None = None
+        not_definable: bool | None = None
+        timeout: bool | None = None
+        elapsed_time: float | None = None
+        error: int | bool | None = None
         if Path(f).stat().st_size > 0:
-            datafile = open(f, "r")
+            datafile = open(f)
             for line in datafile:
                 if "Traceback" in line or "ERROR" in line or "failed" in line:
                     error = 28
@@ -54,7 +53,7 @@ for i, f in enumerate(files):
         else:
             timeout = True
 
-        if timeout == True:
+        if timeout:
             elapsed_time = float("inf")
             definable = None
         else:
@@ -64,7 +63,7 @@ for i, f in enumerate(files):
                 ValueError("Inconsistencia")
             elif not_definable:
                 definable = False
-            if elapsed_time == None and not error:
+            if elapsed_time is None and not error:
                 error = 50
         if error is None:
             error = False

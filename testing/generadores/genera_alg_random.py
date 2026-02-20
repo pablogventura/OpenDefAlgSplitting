@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import datetime
 import sys
-from random import randint
 from itertools import product
-from typing import List
+from random import randint
 
 
 def generador(tA: int, t: int, c: int, fs: list[int]) -> None:
@@ -13,36 +12,35 @@ def generador(tA: int, t: int, c: int, fs: list[int]) -> None:
     # c es el tamaño de esos subconjuntos
     # fs es una lista de aridades de funciones
     # fc es una lista de booleanos para hacer a la funcion hiperconmutativa
-    print("# Generated {0:%Y-%m-%d %H:%M:%S}".format(datetime.datetime.now()))
+    print(f"# Generated {datetime.datetime.now():%Y-%m-%d %H:%M:%S}")
     print(
-        "# Parameters: |A| = %s, |MaxSubs| = %s, |ms| = %s with ms in MaxSubs, Arities = %s"
-        % (tA, t, c, fs)
+        f"# Parameters: |A| = {tA}, |MaxSubs| = {t}, |ms| = {c} with ms in MaxSubs, Arities = {fs}"
     )
 
     # result += "# Random Seed: %s\n" % seed
     cardinality = tA
     print(" ".join(str(e) for e in range(cardinality)))
     for i, arity in enumerate(fs):
-        print("f%s %s" % (i, arity))
+        print(f"f{i} {arity}")
         for values in product(range(cardinality), repeat=arity):
             fvalues = randint(0, cardinality - 1)
-            print(" ".join(str(e) for e in values) + " %s" % fvalues)
+            print(" ".join(str(e) for e in values) + f" {fvalues}")
 
 
 def main() -> None:
     try:
         tA, t, c, fs = sys.argv[1:5]
         try:
-            density = float(sys.argv[7])
-        except:
-            density = 1
+            float(sys.argv[7])
+        except (ValueError, IndexError):
+            pass
         tA = int(tA)
         t = int(t)
         c = int(c)
         fs = [int(i) for i in eval(fs)]
         assert all(i >= 0 for i in fs)
 
-    except:
+    except (ValueError, IndexError):
         print(""" Toma en este orden:
             Cardinalidad de la estructura ambiente
             Cantidad de subuniversos

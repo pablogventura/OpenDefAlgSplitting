@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf8 -*-
 
 from itertools import chain, combinations
 from typing import Any, Callable, Iterable, Iterator, TypeVar

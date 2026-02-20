@@ -1,27 +1,27 @@
-import sys
-
+import os
 from collections import defaultdict
+
+import matplotlib.pyplot as plt
+import numpy as np
+
 # filename = sys.argv[1]
 # f=open(filename,"r")
 # f.readline() # asteriscos basura
 # print(float(f.readline()[24:-5])) # hit
 # print(float(f.readline()[24:-5]) # minion
 # f.close()
-
-import os
-
 results = defaultdict(list)
 files = [os.path.join(dp, f) for dp, dn, fn in os.walk("testing") for f in fn]
-for i, f in enumerate(files):
+for _i, f in enumerate(files):
     if f.endswith(".hvm"):
         _, dir, filename = f.split("/")
-        file = open(f, "r")
+        file = open(f)
         try:
             results[dir].append((float(file.readline()[9:-1]), float(file.readline()[9:-1])))
         except ValueError:
-            print("ERROR in file %s" % f.replace(" ", "\ "))
+            print("ERROR in file {}".format(f.replace(" ", r"\ ")))
 
-new_results = dict()
+new_results = {}
 for k in results:
     value = (0, 0)
     size = len(results[k])
@@ -32,12 +32,8 @@ for k in results:
     new_results[k] = value
     print()
     print(k)
-    print("Hit:    %s with %s samples" % (value[0], size))
-    print("Minion: %s with %s samples" % (value[1], size))
-
-import numpy as np
-import matplotlib.pyplot as plt
-
+    print(f"Hit:    {value[0]} with {size} samples")
+    print(f"Minion: {value[1]} with {size} samples")
 
 data = [(k, new_results[k][0], new_results[k][1]) for k in new_results]
 
@@ -106,7 +102,7 @@ def autolabel(rects, xpos="center"):
         ax.text(
             rect.get_x() + rect.get_width() * offset[xpos],
             1.01 * height,
-            "{}".format(height),
+            f"{height}",
             ha=ha[xpos],
             va="bottom",
         )

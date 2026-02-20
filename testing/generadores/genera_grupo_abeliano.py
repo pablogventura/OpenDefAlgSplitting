@@ -1,5 +1,5 @@
-from itertools import product
 import sys
+from itertools import product
 
 # todo grupo abeliano finito es un producto directo de Z_k
 
@@ -9,7 +9,7 @@ def clean_print(value, universe):
 
 
 def generador(numeros):
-    universe = list(product(*list(range(i) for i in numeros)))
+    universe = list(product(*[range(i) for i in numeros]))
     print(" ".join(str(i) for i in range(len(universe))))
     print("")
     print("Sum 2")
@@ -34,7 +34,7 @@ def generador(numeros):
 def main():
     try:
         numeros = [int(i) for i in sys.argv[1:]]
-    except:
+    except (ValueError, IndexError):
         print("Toma los i de los Z_i que seran multiplicados")
         sys.exit(1)
 

@@ -1,15 +1,15 @@
-# -*- coding: utf-8 -*-
 # !/usr/bin/env python
 
 from __future__ import annotations
 
 from functools import total_ordering
-from first_order import formulas
 from typing import Any
+
+from first_order import formulas
 
 
 @total_ordering
-class Relation(object):
+class Relation:
     """
     Relation
     """
@@ -34,11 +34,11 @@ class Relation(object):
 
     def add(self, t: tuple) -> None:
         if len(t) != self.arity:
-            raise ValueError("%s is not of arity %s" % (t, self.arity))
+            raise ValueError(f"{t} is not of arity {self.arity}")
         self.r.add(t)
 
     def __repr__(self):
-        return "%s : %s" % (self.sym, self.r)
+        return f"{self.sym} : {self.r}"
 
     def __call__(self, *args: Any) -> bool:
         return args in self.r
@@ -76,7 +76,7 @@ class Relation(object):
         return self.arity > other.arity or self.sym < self.sym  # TODO no ordena bien los symbolos
 
 
-class Operation(object):
+class Operation:
     """
     Operation
     """
@@ -85,15 +85,15 @@ class Operation(object):
         self.syntax_sym = formulas.OpSym(sym, arity)
         self.sym = sym
         self.arity = arity
-        self.op = dict()
+        self.op = {}
 
     def add(self, t: tuple) -> None:
         if len(t) - 1 != self.arity:
-            raise ValueError("%s is not of arity %s" % (t[:-1], self.arity))
+            raise ValueError(f"{t[:-1]} is not of arity {self.arity}")
         self.op[t[:-1]] = t[-1]
 
     def __repr__(self):
-        return "%s : %s" % (self.sym, self.op)
+        return f"{self.sym} : {self.op}"
 
     def __call__(self, *args: Any) -> Any:
         return self.op[args]

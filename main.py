@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # !/usr/bin/env python
 
 """
@@ -7,19 +6,19 @@ Modulo para calcular HIT de una tupla en un modelo
 
 from __future__ import annotations
 
+import datetime
 import sys
-from first_order import formulas
-from itertools import product, tee, permutations, chain
 from collections import defaultdict
+from itertools import chain, permutations, product, tee
+from math import log2
 from parser.parser import parser
 from time import time
-from misc import indent
-import sys
-import datetime
+from typing import Any, Iterator
 
 from termcolor import colored
-from math import log2
-from typing import Any, Iterator
+
+from first_order import formulas
+from misc import indent
 
 global model
 # Si True, en cada paso se elige (op, ti) que maximiza information gain.
@@ -69,9 +68,9 @@ def check_formula(formula: formulas.Formula, target: Any) -> None:
         # for t in (target):
         #    print(" ".join(str(e) for e in t))
     else:
-        print("Extension len: %s" % len(extension))
-        print("Target len:    %s" % len(target))
-        print("Intersection len:    %s" % len(target.intersection(extension)))
+        print(f"Extension len: {len(extension)}")
+        print(f"Target len:    {len(target)}")
+        print(f"Intersection len:    {len(target.intersection(extension))}")
         print("Faltan:")
         for t in target - extension:
             print(" ".join(str(e) for e in t))
@@ -84,7 +83,7 @@ def check_formula(formula: formulas.Formula, target: Any) -> None:
 
 class Counterexample(Exception):
     def __init__(self, a: Any) -> None:
-        super(Counterexample, self).__init__(repr(a))
+        super().__init__(repr(a))
 
 
 def permutations_forced(not_forced_elems: list, forced_elems: list, repeat: int) -> Iterator[tuple]:
@@ -142,7 +141,7 @@ class TupleHistory:
         return hash((self.t, tuple(self.history)))
 
     def __repr__(self) -> str:
-        return "TupleHistory(t=%s,h=%s,p=%s)" % (self.t, self.history, self.polarity)
+        return f"TupleHistory(t={self.t},h={self.history},p={self.polarity})"
 
 
 class IndicesTupleGenerator:
@@ -177,12 +176,12 @@ class IndicesTupleGenerator:
         self.last_term = last_term  # ultima term
         self._formula_diff_cache = {}  # (last_term, index) -> formula, para memoización
 
-        assert type(self.ops) == dict
+        assert isinstance(self.ops, dict)
 
         if generator is None:
             if 0 in self.ops:
                 # hay constantes entre las operaciones
-                self.generator = ((constant, tuple()) for constant in self.ops[0])
+                self.generator = ((constant, ()) for constant in self.ops[0])
             else:
                 self.generator = iter([])
             # chain(*[product(self.ops[arity], permutations_forced(self.viejos, self.nuevos, arity)) for arity in sorted(self.ops.keys())])
@@ -222,11 +221,10 @@ class IndicesTupleGenerator:
         Usado para elegir el paso por information gain; permite corte temprano sin materializar todos.
         """
         for arity in self.ops:
-            for op_ti in product(
+            yield from product(
                 self.ops[arity],
                 permutations_forced(self.viejos, self.nuevos, arity),
-            ):
-                yield op_ti
+            )
 
     def set_last_term(self, op: Any, ti: tuple[int, ...]) -> None:
         """Fija last_term para la (op, ti) elegida (p. ej. por IG) antes de aplicar el paso."""
@@ -246,7 +244,7 @@ class IndicesTupleGenerator:
         self.nuevos.append(len(self.viejos) + len(self.nuevos))
         self.sintactico.append(self.last_term)
 
-    def fork(self, quantity: int) -> list["IndicesTupleGenerator"]:
+    def fork(self, quantity: int) -> list[IndicesTupleGenerator]:
         if self.forked:
             raise ValueError("This generator was forked!")
         self.forked = True
@@ -292,7 +290,9 @@ class Block:
         self.tuples = tuples
         self.arity = targets[0].arity
         if formula is None:
-            raise NotImplemented("Bloque sin formula original proveniente del preprocesamiento")
+            raise NotImplementedError(
+                "Bloque sin formula original proveniente del preprocesamiento"
+            )
             self.formula = formulas.true()
             self.fs = [formulas.true()] * len(self.targets)
         else:
@@ -320,7 +320,7 @@ class Block:
     def is_disjunt_to_targets(self) -> bool:
         return all(not th.in_target for th in self.tuples)
 
-    def step(self) -> list["Block"]:
+    def step(self) -> list[Block]:
         """
         Hace un paso en hit a todas las tuplas.
         Si USE_INFORMATION_GAIN: elige (op, ti) que maximiza information gain (conteos, corte temprano, muestreo).
@@ -555,9 +555,9 @@ def main() -> None:
         for target_rel in targets_rels:
             try:
                 f = is_open_def(model, [target_rel])
-                print("\t%s is definable" % targets[arity][0].sym)
+                print(f"\t{targets[arity][0].sym} is definable")
                 if print_formulas:
-                    print("by %s" % f)
+                    print(f"by {f}")
                 if check_partial_solutions:
                     check_formula(f, target_rel)
 
@@ -567,15 +567,15 @@ def main() -> None:
 
             except Counterexample as e:
                 print("NOT DEFINABLE")
-                print("\tCounterexample: %s" % e)
+                print(f"\tCounterexample: {e}")
                 time_hit = time() - start_hit
-                print("Elapsed time: %s" % time_hit)
+                print(f"Elapsed time: {time_hit}")
                 return
     print("DEFINABLE")
     if print_formulas:
-        print("\t%s := %s" % (targets_rels[0].sym[:-2], formula))
+        print(f"\t{targets_rels[0].sym[:-2]} := {formula}")
     time_hit = time() - start_hit
-    print("Elapsed time: %s" % time_hit)
+    print(f"Elapsed time: {time_hit}")
     if check_solution:
         check_formula(formula, targets_rels[0].superrel)
 

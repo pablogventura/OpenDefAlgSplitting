@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Configuración y fixtures para tests de definibilidad.
 """

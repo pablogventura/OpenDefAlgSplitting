@@ -1,6 +1,6 @@
-from random import sample
-from itertools import product
 import sys
+from itertools import product
+from random import sample
 
 
 def c_input(line):
@@ -18,7 +18,7 @@ def parse_universe(line):
 
 
 def random_target(universe, tarity, density):
-    print("T0 %s %s\n" % (int((len(universe) ** tarity) * density), tarity))
+    print(f"T0 {int((len(universe) ** tarity) * density)} {tarity}\n")
     for i in sample(
         list(product(universe, repeat=tarity)), int((len(universe) ** tarity) * density)
     ):
@@ -30,12 +30,12 @@ def main():
         arity, density = sys.argv[1:3]
         arity = int(arity)
         density = float(density)
-    except:
+    except (ValueError, IndexError):
         print(
             "Toma la aridad y la densidad del target aleatorio y lo agrega a un archivo model que este entrando por la stdin"
         )
         return
-    print("# Target random arity=%s, density=%s" % (arity, density))
+    print(f"# Target random arity={arity}, density={density}")
     universe = None
     try:
         while not universe:

@@ -1,7 +1,7 @@
 import random
+import sys
 from itertools import permutations
 from math import factorial
-import sys
 
 
 def iter_sample_fast(iterable, samplesize):
@@ -11,8 +11,8 @@ def iter_sample_fast(iterable, samplesize):
     try:
         for _ in range(samplesize):
             results.append(next(iterator))
-    except StopIteration:
-        raise ValueError("Sample larger than population.")
+    except StopIteration as err:
+        raise ValueError("Sample larger than population.") from err
     random.shuffle(results)  # Randomize their positions
     for i, v in enumerate(iterator, samplesize):
         r = random.randint(0, i)
@@ -43,7 +43,7 @@ def random_target(universe, tarity, density):
     for i in iter_sample_fast(tuplas, cantidad):
         if random.random() < density:
             target.append(" ".join(map(str, i)))
-    print("T0 %s %s\n" % (len(target), tarity))
+    print(f"T0 {len(target)} {tarity}\n")
     for t in target:
         print(t)
 
@@ -53,12 +53,12 @@ def main():
         arity, density = sys.argv[1:3]
         arity = int(arity)
         density = float(density)
-    except:
+    except (ValueError, IndexError):
         print(
             "Toma la aridad y la densidad del target aleatorio y lo agrega a un archivo model que este entrando por la stdin"
         )
         return
-    print("# Target random arity pure=%s, density=%s" % (arity, density))
+    print(f"# Target random arity pure={arity}, density={density}")
     universe = None
     try:
         while not universe:

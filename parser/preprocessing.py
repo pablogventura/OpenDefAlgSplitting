@@ -1,15 +1,14 @@
 from __future__ import annotations
 
-from collections import defaultdict, OrderedDict
+from collections import OrderedDict, defaultdict
 from typing import Any
 
-
 from first_order import formulas
-from first_order.relops import Operation, Relation
+from first_order.relops import Relation
 from misc import indent
 
 
-class Pattern(object):
+class Pattern:
     tuple: tuple
     pruned_tuple: tuple
     pattern: frozenset
@@ -30,7 +29,7 @@ class Pattern(object):
         for cls in self.pattern:
             result += ",".join(str(i) for i in cls)
             result += "|"
-        result += "a%s" % len(self.pruned_tuple)
+        result += f"a{len(self.pruned_tuple)}"
         return result
 
     def __hash__(self):
@@ -71,9 +70,9 @@ class Pattern(object):
 
     def __repr__(self):
         result = "Pattern(\n"
-        result += indent("tuple = %s\n" % (self.tuple,))
-        result += indent("pattern = %s\n" % self.pattern)
-        result += indent("formula = %s\n" % self.formula())
+        result += indent(f"tuple = {self.tuple}\n")
+        result += indent(f"pattern = {self.pattern}\n")
+        result += indent(f"formula = {self.formula()}\n")
         result += ")"
         return result
 
@@ -101,6 +100,9 @@ def limpia(t: tuple) -> list:
 
 
 def preprocesamiento(T: set) -> set:
+    def patron(t: tuple) -> Pattern:
+        return Pattern(t)
+
     result = []
     q = quotient(T, patron)
     for p in q:
@@ -108,7 +110,7 @@ def preprocesamiento(T: set) -> set:
         result.append(set())
         for t in q[p]:
             result[-1].add(tuple(t[i] for i in indices))
-    return set(frozenset(e) for e in result)
+    return {frozenset(e) for e in result}
 
 
 def formula_patron(t: tuple) -> tuple:
@@ -137,7 +139,7 @@ def preprocesamiento2(target: Relation) -> list[Relation]:
     for pattern in pruned_relations:
         first_tuple = pruned_relations[pattern][0]
         arity = len(first_tuple)
-        patron_name = "_".join(str(i) for i in first_tuple)
+        "_".join(str(i) for i in first_tuple)
         result.append(
             Relation(target.sym + pattern.name(), arity, pruned_relations[pattern], pattern, target)
         )

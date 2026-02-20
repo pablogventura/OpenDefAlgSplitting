@@ -2,9 +2,10 @@
 Toma como argumento el directorio donde estan los modelos
 """
 
-from testing.shell_non_blocking import ShellProc
-from random import shuffle
 import os
+from random import shuffle
+
+from testing.shell_non_blocking import ShellProc
 
 cores = 13
 procs = []
@@ -18,8 +19,9 @@ try:
                 procs = [p for p in procs if p.is_running()]
             procs.append(
                 ShellProc(
-                    'timeout -s 9 250m python3 ../OpenDefAlg/main.py "%s" > "%s" 2 > "%s"'
-                    % (f, f.replace(".model", ".megahitold"), f.replace(".model", ".stderr"))
+                    'timeout -s 9 250m python3 ../OpenDefAlg/main.py "{}" > "{}" 2 > "{}"'.format(
+                        f, f.replace(".model", ".megahitold"), f.replace(".model", ".stderr")
+                    )
                 )
             )
 

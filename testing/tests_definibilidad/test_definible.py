@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Tests de modelos DEFINIBLES por tipo.
 Cada tipo (boole, aleatorio, grupo-abeliano, etc.) debe tener al menos un test
@@ -6,22 +5,20 @@ con target definible que devuelva DEFINABLE.
 """
 
 import os
-import subprocess
-import sys
-import tempfile
-import pytest
-from pathlib import Path
-
-from .conftest import (
-    PROJECT_ROOT,
-    run_main,
-    run_generador,
-    run_formulaaleatoria,
-    tmp_model_file,
-)
 
 # Semilla para reproducibilidad cuando aplique
 import random
+import tempfile
+from pathlib import Path
+
+import pytest
+
+from .conftest import (
+    PROJECT_ROOT,
+    run_formulaaleatoria,
+    run_generador,
+    run_main,
+)
 
 random.seed(42)
 

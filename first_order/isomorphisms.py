@@ -1,13 +1,13 @@
-# -*- coding: utf-8 -*-
 #!/usr/bin/env python
 
 from __future__ import annotations
 
-from misc import indent
 from typing import Any
 
+from misc import indent
 
-class Homomorphism(object):
+
+class Homomorphism:
     values: dict
 
     def __init__(self, d: dict, source: Any, target: Any, subtype: set | list) -> None:
@@ -28,7 +28,7 @@ class Homomorphism(object):
     def __repr__(self) -> str:
         result = "Homomorphism(\n"
         for a, b in self.values.items():
-            result += "  %s->%s\n" % (a, b)
+            result += f"  {a}->{b}\n"
         result += "from:\n"
         result += indent(repr(self.source))
         result += "to:\n"
@@ -46,7 +46,7 @@ class Homomorphism(object):
         return True
 
 
-class Isomorphism(object):
+class Isomorphism:
     values: dict
 
     def __init__(self, d: dict, source: Any, target: Any, subtype: set | list) -> None:
@@ -72,7 +72,7 @@ class Isomorphism(object):
     def __repr__(self) -> str:
         result = "Isomorphism(\n"
         for a, b in self.values.items():
-            result += "  %s->%s\n" % (a, b)
+            result += f"  {a}->{b}\n"
         result += "from:\n"
         result += indent(repr(self.source))
         result += "to:\n"
@@ -92,7 +92,7 @@ class Isomorphism(object):
         return True
 
 
-class Automorphism(object):
+class Automorphism:
     values: dict
 
     def __init__(self, d: dict, model: Any, subtype: set | list) -> None:
@@ -112,7 +112,7 @@ class Automorphism(object):
     def __repr__(self) -> str:
         result = "Automorphism(\n"
         for a, b in self.values.items():
-            result += "  %s->%s\n" % (a, b)
+            result += f"  {a}->{b}\n"
         result += "from:\n"
         result += indent(repr(self.model))
         result += ")"

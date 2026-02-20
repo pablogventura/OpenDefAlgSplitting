@@ -1,6 +1,4 @@
-from time import sleep
 import os
-from random import randint
 
 path_mega_hit = "../mega_hit_test"
 
@@ -17,7 +15,7 @@ def generar(*args, quantity=400):
         filename = '"' + filename + '"'
         try:
             os.mkdir(os.path.join(path_mega_hit, args[0]))
-        except:
+        except OSError:
             pass
         script = "genera_" + args[0] + ".py"
         argumentos = '" "'.join(args[1:])

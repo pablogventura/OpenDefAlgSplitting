@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Tests de modelos NO DEFINIBLES por tipo.
 Targets aleatorios sobre álgebras (típicamente no definibles).
@@ -6,13 +5,13 @@ Targets aleatorios sobre álgebras (típicamente no definibles).
 
 import os
 import tempfile
+
 import pytest
-from pathlib import Path
 
 from .conftest import (
     PROJECT_ROOT,
-    run_main,
     run_generador,
+    run_main,
 )
 
 

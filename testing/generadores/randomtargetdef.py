@@ -1,6 +1,6 @@
-from random import sample
-from itertools import product
 import sys
+
+from first_order.formulas import OpSym
 
 
 def c_input(line):
@@ -33,8 +33,7 @@ def main():
         for s, a in zip(syms, arities):
             ops.append(OpSym(s, a))
         print(ops)
-    except:
-        raise
+    except (ValueError, IndexError, TypeError):
         print(
             "Toma la aridad y la profundidad del target aleatorio, una lista de simbolos, y una lista de aridades y lo agrega a un archivo model que este entrando por la stdin"
         )

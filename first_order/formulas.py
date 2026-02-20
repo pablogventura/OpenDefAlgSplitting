@@ -1,17 +1,17 @@
 #!/usr/bin/env python
-# -*- coding: utf8 -*-
 
 # TERMS
 
 from __future__ import annotations
 
-from myunicode import subscript
-from itertools import product, combinations
 from collections import defaultdict
-from typing import Any, Iterable, Iterator, Set, Tuple
+from itertools import combinations, product
+from typing import Any, Iterable, Iterator
+
+from myunicode import subscript
 
 
-class Term(object):
+class Term:
     """
     Clase general de los terminos de primer orden
     """
@@ -19,7 +19,7 @@ class Term(object):
     def __init__(self):
         pass
 
-    def free_vars(self) -> Set[Variable]:
+    def free_vars(self) -> set[Variable]:
         raise NotImplementedError
 
     def evaluate(self, model: Any, vector: dict) -> Any:
@@ -29,7 +29,7 @@ class Term(object):
         raise NotImplementedError
 
     def __hash__(self) -> int:
-        raise NotImplemented
+        raise NotImplementedError
 
     def __lt__(self, other: Term) -> bool:
         if self.grade() == other.grade():
@@ -63,7 +63,7 @@ class Variable(Term):
     def __hash__(self) -> int:
         return hash(self.sym)
 
-    def free_vars(self) -> Set[Variable]:
+    def free_vars(self) -> set[Variable]:
         return {self}
 
     def grade(self) -> int:
@@ -72,11 +72,11 @@ class Variable(Term):
     def evaluate(self, model: Any, vector: dict) -> Any:
         try:
             return vector[self]
-        except KeyError:
-            raise ValueError("Free variable %s is not defined" % (self))
+        except KeyError as err:
+            raise ValueError(f"Free variable {self} is not defined") from err
 
 
-class OpSym(object):
+class OpSym:
     """
     Simbolo de operacion de primer orden
     """
@@ -93,7 +93,7 @@ class OpSym(object):
             raise ValueError("Arity not correct")
         for a in args:
             if not isinstance(a, Term):
-                raise ValueError("%s isn't a term" % a)
+                raise ValueError(f"{a} isn't a term")
         return OpTerm(self, args)
 
     def __hash__(self) -> int:
@@ -131,7 +131,7 @@ class OpTerm(Term):
         else:
             return 0
 
-    def free_vars(self) -> Set[Variable]:
+    def free_vars(self) -> set[Variable]:
         if self.args:
             return set.union(*[f.free_vars() for f in self.args])
         else:
@@ -151,7 +151,7 @@ _formula_and_cache = {}
 _formula_or_cache = {}
 
 
-class Formula(object):
+class Formula:
     """
     Clase general de las formulas de primer orden
 
@@ -187,9 +187,9 @@ class Formula(object):
 
     """
 
-    orphan_vars: Set[Variable]
+    orphan_vars: set[Variable]
 
-    def __init__(self, orphan_vars: Set[Variable] | None = None) -> None:
+    def __init__(self, orphan_vars: set[Variable] | None = None) -> None:
         self.orphan_vars = orphan_vars if orphan_vars is not None else set()
 
     def __and__(self, other: Formula) -> Formula:
@@ -238,14 +238,14 @@ class Formula(object):
 
         return NegFormula(self)
 
-    def free_vars(self) -> Set[Variable]:
+    def free_vars(self) -> set[Variable]:
         return self.orphan_vars
 
     def fresh_variable(self) -> Variable:
         # devuelve una variable fresca para usar en la formula sin conflictos
         raise NotImplementedError
 
-    def variables_in(self) -> Set[Variable]:
+    def variables_in(self) -> set[Variable]:
         # devuelve las variables que se usan en la formula, libres o no.
         return self.free_vars()
 
@@ -280,12 +280,12 @@ class NegFormula(Formula):
 
     f: Formula
 
-    def __init__(self, f: Formula, orphan_vars: Set[Variable] | None = None) -> None:
+    def __init__(self, f: Formula, orphan_vars: set[Variable] | None = None) -> None:
         super().__init__(orphan_vars if orphan_vars is not None else set())
         self.f = f
 
     def __repr__(self) -> str:
-        return "¬ %s (%s)" % (self.f, ",".join(str(x) for x in self.free_vars()))
+        return "¬ {} ({})".format(self.f, ",".join(str(x) for x in self.free_vars()))
 
     def __neg__(self) -> Formula:
         return self.f
@@ -293,10 +293,10 @@ class NegFormula(Formula):
     def __hash__(self) -> int:
         return hash(("-", self.f))
 
-    def free_vars(self) -> Set[Variable]:
+    def free_vars(self) -> set[Variable]:
         return self.f.free_vars()
 
-    def variables_in(self) -> Set[Variable]:
+    def variables_in(self) -> set[Variable]:
         return self.f.variables_in()
 
     def satisfy(self, model: Any, vector: dict) -> bool:
@@ -311,19 +311,19 @@ class BinaryOpFormula(Formula):
     subformulas: frozenset
 
     def __init__(
-        self, subformulas: Iterable[Formula], orphan_vars: Set[Variable] | None = None
+        self, subformulas: Iterable[Formula], orphan_vars: set[Variable] | None = None
     ) -> None:
         super().__init__(orphan_vars if orphan_vars is not None else set())
         self.subformulas = frozenset(subformulas)
 
-    def free_vars(self) -> Set[Variable]:
+    def free_vars(self) -> set[Variable]:
         result = set()
         for f in self.subformulas:
             result = result.union(f.free_vars())
         return result
 
-    def variables_in(self) -> Set[Variable]:
-        result: Set[Variable] = set()
+    def variables_in(self) -> set[Variable]:
+        result: set[Variable] = set()
         for f in self.subformulas:
             result = result.union(f.variables_in())
         return result
@@ -399,7 +399,7 @@ class AndFormula(BinaryOpFormula):
         return all(f.satisfy(model, vector) for f in self.subformulas)
 
 
-class RelSym(object):
+class RelSym:
     """
     Simbolo de relacion de primer orden
     """
@@ -416,7 +416,7 @@ class RelSym(object):
             raise ValueError("Arity not correct")
         for a in args:
             if not isinstance(a, Term):
-                raise ValueError("%s isn't a term" % a)
+                raise ValueError(f"{a} isn't a term")
 
         return RelFormula(self, args)
 
@@ -435,7 +435,7 @@ class RelFormula(Formula):
     sym: RelSym
     args: tuple
 
-    def __init__(self, sym: RelSym, args: tuple, orphan_vars: Set[Variable] | None = None) -> None:
+    def __init__(self, sym: RelSym, args: tuple, orphan_vars: set[Variable] | None = None) -> None:
         super().__init__(orphan_vars if orphan_vars is not None else set())
         self.sym = sym
         self.args = args
@@ -448,10 +448,10 @@ class RelFormula(Formula):
         result += "(" + ",".join(str(x) for x in self.free_vars()) + ")"
         return result
 
-    def free_vars(self) -> Set[Variable]:
+    def free_vars(self) -> set[Variable]:
         return set.union(*[f.free_vars() for f in self.args])
 
-    def variables_in(self) -> Set[Variable]:
+    def variables_in(self) -> set[Variable]:
         return self.free_vars()
 
     def satisfy(self, model: Any, vector: dict) -> bool:
@@ -470,22 +470,22 @@ class EqFormula(Formula):
     t1: Term
     t2: Term
 
-    def __init__(self, t1: Term, t2: Term, orphan_vars: Set[Variable] | None = None) -> None:
+    def __init__(self, t1: Term, t2: Term, orphan_vars: set[Variable] | None = None) -> None:
         super().__init__(orphan_vars)
         if not (isinstance(t1, Term) and isinstance(t2, Term)):
-            raise ValueError("Must be terms:%s %s" % (t1, t2))
+            raise ValueError(f"Must be terms:{t1} {t2}")
         if t2 < t1:
             t1, t2 = t2, t1
         self.t1 = t1
         self.t2 = t2
 
     def __repr__(self) -> str:
-        return "%s == %s (%s)" % (self.t1, self.t2, ",".join(str(x) for x in self.free_vars()))
+        return "{} == {} ({})".format(self.t1, self.t2, ",".join(str(x) for x in self.free_vars()))
 
-    def free_vars(self) -> Set[Variable]:
+    def free_vars(self) -> set[Variable]:
         return set.union(self.t1.free_vars(), self.t2.free_vars())
 
-    def variables_in(self) -> Set[Variable]:
+    def variables_in(self) -> set[Variable]:
         return self.free_vars()
 
     def satisfy(self, model: Any, vector: dict) -> bool:
@@ -503,15 +503,15 @@ class QuantifierFormula(Formula):
     var: Variable
     f: Formula
 
-    def __init__(self, var: Variable, f: Formula, orphan_vars: Set[Variable] | None = None) -> None:
+    def __init__(self, var: Variable, f: Formula, orphan_vars: set[Variable] | None = None) -> None:
         super().__init__(orphan_vars if orphan_vars is not None else set())
         self.var = var
         self.f = f
 
-    def free_vars(self) -> Set[Variable]:
+    def free_vars(self) -> set[Variable]:
         return self.f.free_vars() - {self.var}
 
-    def variables_in(self) -> Set[Variable]:
+    def variables_in(self) -> set[Variable]:
         return set.union(self.f.free_vars(), {self.var})
 
 
@@ -521,7 +521,7 @@ class ForAllFormula(QuantifierFormula):
     """
 
     def __repr__(self):
-        return "∀ %s %s (%s)" % (self.var, self.f, ",".join(str(x) for x in self.free_vars()))
+        return "∀ {} {} ({})".format(self.var, self.f, ",".join(str(x) for x in self.free_vars()))
 
     def satisfy(self, model: Any, vector: dict) -> bool:
         for i in model.universe:
@@ -540,7 +540,7 @@ class ExistsFormula(QuantifierFormula):
     """
 
     def __repr__(self):
-        return "∃ %s %s (%s)" % (self.var, self.f, ",".join(str(x) for x in self.free_vars()))
+        return "∃ {} {} ({})".format(self.var, self.f, ",".join(str(x) for x in self.free_vars()))
 
     def satisfy(self, model: Any, vector: dict) -> bool:
         vector = vector.copy()
@@ -560,7 +560,7 @@ class TrueFormula(Formula):
     """
 
     def __repr__(self):
-        return "⊤(%s)" % ",".join(str(x) for x in self.free_vars())
+        return "⊤({})".format(",".join(str(x) for x in self.free_vars()))
 
     def satisfy(self, model: Any, vector: dict) -> bool:
         return True
@@ -583,7 +583,7 @@ class FalseFormula(Formula):
     """
 
     def __repr__(self):
-        return "⊥(%s)" % ",".join(str(x) for x in self.free_vars())
+        return "⊥({})".format(",".join(str(x) for x in self.free_vars()))
 
     def satisfy(self, model: Any, vector: dict) -> bool:
         return False
@@ -630,14 +630,14 @@ def exists(var: Variable, formula: Formula) -> ExistsFormula:
     return ExistsFormula(var, formula)
 
 
-def true(orphan_vars: Set[Variable] | None = None) -> TrueFormula:
+def true(orphan_vars: set[Variable] | None = None) -> TrueFormula:
     """
     Devuelve la formula True
     """
     return TrueFormula(orphan_vars if orphan_vars is not None else set())
 
 
-def false(orphan_vars: Set[Variable] | None = None) -> FalseFormula:
+def false(orphan_vars: set[Variable] | None = None) -> FalseFormula:
     """
     Devuelve la formula False
     """
@@ -650,7 +650,7 @@ def false(orphan_vars: Set[Variable] | None = None) -> FalseFormula:
 def grafico(term: Term, vs: list[Variable], model: Any) -> tuple[tuple[tuple[Any, ...], Any], ...]:
     result = {}
     for tupla in product(model.universe, repeat=len(vs)):
-        result[tupla] = term.evaluate(model, {v: a for v, a in zip(vs, tupla)})
+        result[tupla] = term.evaluate(model, dict(zip(vs, tupla)))
     return tuple(sorted(result.items()))
 
 
@@ -664,7 +664,7 @@ def generate_terms(funtions: Iterable[OpSym], vs: list[Variable], model: Any) ->
 
     for v in vs:
         g = grafico(v, vs, model)
-        if not g in graficos:
+        if g not in graficos:
             result.append(v)
             graficos.add(g)
     nuevos = [1]
@@ -673,7 +673,7 @@ def generate_terms(funtions: Iterable[OpSym], vs: list[Variable], model: Any) ->
         for f in funtions:
             for ts in product(result, repeat=f.arity):
                 g = grafico(f(*ts), vs, model)
-                if not g in graficos:
+                if g not in graficos:
                     nuevos.append(f(*ts))
                     graficos.add(g)
             result += nuevos
@@ -694,7 +694,6 @@ def atomics(
     >>> list(atomics([R],vs,equality=False))
     [R(x₀, x₀), R(x₀, x₁), R(x₁, x₀), R(x₁, x₁)]
     """
-    terms
     for r in relations:
         for t in product(terms, repeat=r.arity):
             yield r(*t)
@@ -749,7 +748,7 @@ def bolsas(model: Any, arity: int) -> dict[Formula, list]:
             for tupla in bolsa:
                 # TODO CUANDO UNA FORMULA NO TIENE NADIE QUE LA SATISFACE
                 # O TODOS LA SATISFACEN, NO VALE LA PENA AGREGARLA
-                if formula.satisfy(model, {v: i for v, i in zip(vs, tupla)}):
+                if formula.satisfy(model, dict(zip(vs, tupla))):
                     nuevas[foriginal & formula].append(tupla)
                 else:
                     nuevas[foriginal & (-formula)].append(tupla)

@@ -1,18 +1,17 @@
-# -*- coding: utf-8 -*-
 """
 Tests de casos bordes y situaciones raras.
 """
 
 import os
 import tempfile
-import pytest
 from pathlib import Path
+
+import pytest
 
 from .conftest import (
     PROJECT_ROOT,
-    run_main,
     run_generador,
-    tmp_model_file,
+    run_main,
 )
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -138,9 +137,7 @@ class TestDensidadesExtremas:
             f.flush()
             salida = run_main(f.name, timeout=60)
             os.unlink(f.name)
-        assert _es_definible(salida), (
-            "Target total (densidad 1) definible. Salida: %s" % salida[:400]
-        )
+        assert _es_definible(salida), f"Target total (densidad 1) definible. Salida: {salida[:400]}"
 
 
 class TestGrupoTrivial:
@@ -182,4 +179,4 @@ class TestAlgebraConConstantes:
             f.flush()
             salida = run_main(f.name, timeout=90)
             os.unlink(f.name)
-        assert _es_definible(salida), "Diagonal con constante definible. Salida: %s" % salida[:400]
+        assert _es_definible(salida), f"Diagonal con constante definible. Salida: {salida[:400]}"

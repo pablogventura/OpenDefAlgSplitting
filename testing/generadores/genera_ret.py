@@ -1,6 +1,6 @@
+import sys
 from itertools import product
 from random import sample
-import sys
 
 
 def join(a, b):
@@ -49,24 +49,24 @@ def closure(ancho, muestra, q=None):
             rel_meet = set()
             rel_join = set()
     print(" ".join(map(str, universe)))
-    print("# Universe Size: %s" % len(universe))
+    print(f"# Universe Size: {len(universe)}")
     print("# Ambient Universe Size: %s" % (2**ancho))
     print("# Generated from: " + " ".join(map(str, generators)))
     print("")
     print("m 2")
     for a, b, r in rel_meet:
-        print("%s %s %s" % (a, b, r))
+        print(f"{a} {b} {r}")
     print("")
     print("j 2")
     for a, b, r in rel_join:
-        print("%s %s %s" % (a, b, r))
+        print(f"{a} {b} {r}")
 
 
 def main():
     try:
         ancho = int(sys.argv[1])
         muestra = int(sys.argv[2])
-    except:
+    except (ValueError, IndexError):
         print("Toma un i tal que arma el algebra de boole de 2^i elementos")
         print(
             "Toma un numero de elementos para generar un subuniverso de esa algebra de boole que sera el ret distributivo"
