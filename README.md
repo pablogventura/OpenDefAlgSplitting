@@ -68,7 +68,9 @@ cd testing/generadores
 python3 genera_modelos.py --help
 ```
 
-Models must include a target relation (name starting with "T") for definability checking. Use `--target ARIDAD DENSIDAD` when generating models.
+Models must include a target relation (name starting with "T") for definability checking.
+
+**Important:** The `--target` option adds a *random* target. Random targets are typically **not definable** (the algorithm will find a counterexample). To test **definable** cases, see [Generating definable targets](#generating-definable-targets) below.
 
 ### Global options
 
@@ -171,3 +173,71 @@ Generates only a random target relation T0 over a universe of given size. No ope
 - `densidad` (float, 0–1): fraction of possible tuples that belong to T0
 
 **Example:** `genera_modelos.py target 10 2 0.3 -o solo_target.model`
+
+---
+
+## Generating definable targets
+
+Targets added with `--target` are random and usually **not definable**. To generate targets that *are* definable (for testing definable cases or difficult definable examples), use **`formulaaleatoria.py`**.
+
+This script takes a model on stdin, appends a target T0 defined by a random first-order formula built from the algebra's operations, and prints the complete model. The formula is guaranteed to define T0, so the algorithm must "rediscover" it—deeper formulas yield harder instances.
+
+**Usage:**
+```bash
+cd testing/generadores
+python3 genera_alg_random.py 8 0 0 "[2]" | python3 formulaaleatoria.py 2 '{"f0":2}' > definible.model
+```
+
+**Parameters:**
+- `formulaaleatoria.py ARIDAD SIM` — arity of T0 and symbol dictionary (operation names → arity; must match the model)
+- Symbol dicts by algebra type (the value is the **arity** of each operation; if wrong, the parser raises "Arity not correct"):
+  - **aleatorio** (one binary f0): `'{"f0":2}'`
+  - **aleatorio** (f0, f1 both binary): `'{"f0":2,"f1":2}'`
+  - **boole**: `'{"m":2,"j":2}'`
+  - **grupo-abeliano-diverso**: `'{"Sum":2,"Neg":1,"Zero":0}'`
+
+**Examples:**
+```bash
+# Definable target on random algebra (f0 binary)
+python3 genera_alg_random.py 10 0 0 "[2]" | python3 formulaaleatoria.py 2 '{"f0":2}' > def_aleatorio.model
+
+# Definable target on Boolean algebra
+python3 genera_boole.py 3 | python3 formulaaleatoria.py 2 '{"m":2,"j":2}' > def_boole.model
+
+# Definable target on abelian group
+python3 genera_grupo_abeliano_diverso.py 4 | python3 formulaaleatoria.py 2 '{"Sum":2,"Neg":1,"Zero":0}' > def_grupo.model
+```
+
+The formula depth and number of subformulas are fixed in `formulaaleatoria.py` (default: depth 3, 2 subformulas). Editing these values yields harder definable instances.
+
+**Difficult definable example** (larger universe, two operations, arity 3):
+```bash
+python3 genera_alg_random.py 12 0 0 "[2,2]" | python3 formulaaleatoria.py 3 '{"f0":2,"f1":2}' > modelo_dificil_definible.model
+```
+
+---
+
+## Defining relations by formula in model files
+
+The parser supports declaring a relation T by a formula instead of listing tuples. Format:
+
+```
+T0(x,y,z) eq(term1,term2) | -eq(term3,term4) & ...
+```
+
+- Variables: `x`, `y`, `z`, etc.
+- Use `eq(a,b)` for equality (not `==`).
+- Use operations from the algebra as function symbols (e.g. `m`, `j` for meet/join; `f0`, `f1` for aleatorio).
+- Connect with `&`, `|`, `-` for conjunction, disjunction, negation.
+
+Example (see `model_examples/modeloqueanda.model`):
+```
+T0(x,y,z) -eq(z,y) & -eq(z,x) & -eq(y,x) & eq(y,f0(z, f0(x, y)))
+```
+
+---
+
+## Other generators and batch processing
+
+- **`agregaformula.py`** — batch: adds formula-defined targets to gzipped `.modelwt` models (alg_random_wt, boole_wt, grupo_abeliano_diverso_wt). Run from `testing/generadores`.
+- **`formulaaleatoria.py`** — core script for definable targets; used by agregaformula and can be piped directly.
