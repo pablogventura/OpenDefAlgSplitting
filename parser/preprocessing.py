@@ -1,11 +1,20 @@
+from __future__ import annotations
+
 from collections import defaultdict, OrderedDict
+from typing import Any
+
+
 from first_order import formulas
-from first_order.relops import Relation, Operation
+from first_order.relops import Operation, Relation
 from misc import indent
 
 
 class Pattern(object):
-    def __init__(self, t):
+    tuple: tuple
+    pruned_tuple: tuple
+    pattern: frozenset
+
+    def __init__(self, t: tuple) -> None:
         self.tuple = t
         self.pruned_tuple = []
         pattern = defaultdict(set)
@@ -68,7 +77,7 @@ class Pattern(object):
         result += ")"
         return result
 
-def quotient(s, f):
+def quotient(s: set, f: Any) -> dict:
     # cociente del conjunto s, por la funcion f
     result = {e: [e] for e in s}
     for a in s:
@@ -82,14 +91,14 @@ def quotient(s, f):
                 del result[b]
     return result
 
-def limpia(t):
+def limpia(t: tuple) -> list:
     result = set()
     for e in t:
         result.add(t.index(e))
     return sorted(result)
 
 
-def preprocesamiento(T):
+def preprocesamiento(T: set) -> set:
     result = []
     q = quotient(T, patron)
     for p in q:
@@ -100,7 +109,7 @@ def preprocesamiento(T):
     return set(frozenset(e) for e in result)
 
 
-def formula_patron(t):
+def formula_patron(t: tuple) -> tuple:
     f = formulas.true()
     vs = formulas.variables(*list(range(len(t))))
     tn = tuple(OrderedDict.fromkeys(t))
@@ -116,7 +125,7 @@ def formula_patron(t):
     return f, tn, free_vars
 
 
-def preprocesamiento2(target):
+def preprocesamiento2(target: Relation) -> list[Relation]:
 
     pruned_relations = defaultdict(list)
     for t in target.r:

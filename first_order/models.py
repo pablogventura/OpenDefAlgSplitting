@@ -1,24 +1,27 @@
 # -*- coding: utf-8 -*-
 #!/usr/bin/env python
 
+from __future__ import annotations
+
 from itertools import product
 from misc import indent
+from typing import Any
 
 
 class PartialOrderedDict(dict):
-    def __lt__(self, other):  # <
+    def __lt__(self, other: PartialOrderedDict) -> bool:  # <
         return self <= other and self != other
 
-    def __gt__(self, other):  # >
+    def __gt__(self, other: PartialOrderedDict) -> bool:  # >
         return self >= other and self != other
 
-    def __le__(self, other):  # <=
+    def __le__(self, other: PartialOrderedDict) -> bool:  # <=
         for k in self:
             if not self[k] <= other[k]:
                 return False
         return True
 
-    def __ge__(self, other):  # >=
+    def __ge__(self, other: PartialOrderedDict) -> bool:  # >=
         for k in self:
             if not self[k] >= other[k]:
                 return False
@@ -26,7 +29,11 @@ class PartialOrderedDict(dict):
 
 
 class Model(object):
-    def __init__(self, universe, relations, operations):
+    universe: list
+    relations: dict
+    operations: dict
+
+    def __init__(self, universe: list | set, relations: dict, operations: dict) -> None:
         """
         Model
         Input: a universe list, relations dict, operations dict
@@ -35,7 +42,7 @@ class Model(object):
         self.relations = relations
         self.operations = operations
 
-    def restrict(self, subuniverse):
+    def restrict(self, subuniverse: list | set) -> Model:
         """
         restricion de un subuniverso a ciertas relaciones
         """
@@ -47,7 +54,7 @@ class Model(object):
             operations[o] = self.operations[o].restrict(subuniverse)
         return Model(subuniverse, relations, operations)
 
-    def substructure(self, generators):
+    def substructure(self, generators: list | set) -> Model:
         news = set(generators)
         universe = set()
 
@@ -65,7 +72,7 @@ class Model(object):
             news = local_news
         return self.restrict(universe)
 
-    def rels_sizes(self, subtype):
+    def rels_sizes(self, subtype: set | list) -> PartialOrderedDict:
 
         return PartialOrderedDict({r: len(self.relations[r]) for r in subtype})
 
@@ -82,21 +89,21 @@ class Model(object):
     def __len__(self):
         return len(self.universe)
 
-    def spectrum(self, subtype):
+    def spectrum(self, subtype: set | list) -> set:
         result = set()
         return result.union(*[self.relations[r].spectrum() for r in subtype])
 
-    def to_relational_model(self):
+    def to_relational_model(self) -> Model:
         relations = dict(self.relations)
         for op in self.operations:
             rel = self.operations[op].graph_rel()
             relations[rel.sym] = rel
         return Model(self.universe, relations, dict())
 
-    def rel_minion_name(self, r):
+    def rel_minion_name(self, r: str) -> str:
         return r.replace("|", "b").replace("-", "e")
 
-    def minion_tables(self, subtype):
+    def minion_tables(self, subtype: set | list) -> str:
         result = ""
         for r in subtype:
             result += "%s %s %s\n" % (self.rel_minion_name(r),
@@ -106,7 +113,7 @@ class Model(object):
             result += "\n"
         return result[:-1]
 
-    def minion_constraints(self, subtype):
+    def minion_constraints(self, subtype: set | list) -> str:
         result = ""
         # table([f[0],f[0],f[0]],bv)
         result = ""

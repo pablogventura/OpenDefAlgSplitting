@@ -3,9 +3,10 @@
 
 import os
 import pickle
+from typing import Any
 
 
-def object_to_file(obj, path):
+def object_to_file(obj: Any, path: str) -> None:
     """
     Guarda un objeto en un archivo
 
@@ -20,7 +21,7 @@ def object_to_file(obj, path):
     f.close()
 
 
-def file_to_object(path):
+def file_to_object(path: str) -> Any:
     """
     Lee un objeto en un archivo
 
@@ -36,7 +37,7 @@ def file_to_object(path):
     return obj
 
 
-def create_pipe(path):
+def create_pipe(path: str) -> None:
     """
     Crea un named pipe
 
@@ -48,7 +49,7 @@ def create_pipe(path):
         pass
 
 
-def remove(path):
+def remove(path: str) -> None:
     """
     Elimina un archivo
     """
@@ -59,7 +60,7 @@ def remove(path):
         pass
 
 
-def write(path, data):
+def write(path: str, data: str) -> None:
     """
     Escribe datos en un archivo
     """

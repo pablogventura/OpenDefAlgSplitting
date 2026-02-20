@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
 # !/usr/bin/env python
 
+from __future__ import annotations
+
 from functools import total_ordering
 from first_order import formulas
+from typing import Any
+
 
 @total_ordering
 class Relation(object):
@@ -10,18 +14,18 @@ class Relation(object):
     Relation
     """
     
-    def __init__(self, sym, arity, rel=set(), pattern=None, superrel=None):
+    def __init__(self, sym: str, arity: int, rel: set | None = None, pattern: Any = None, superrel: Relation | None = None) -> None:
         self.syntax_sym = formulas.RelSym(sym,arity)
         self.sym = sym
         self.arity = arity
-        self.r = rel
+        self.r = rel if rel is not None else set()
         self.pattern = pattern
         if superrel is None:
             self.superrel = self
         else:
             self.superrel = superrel
     
-    def add(self, t):
+    def add(self, t: tuple) -> None:
         if len(t) != self.arity:
             raise ValueError('%s is not of arity %s' % (t, self.arity))
         self.r.add(t)
@@ -29,7 +33,7 @@ class Relation(object):
     def __repr__(self):
         return "%s : %s" % (self.sym, self.r)
     
-    def __call__(self, *args):
+    def __call__(self, *args: Any) -> bool:
         return args in self.r
     
     def __len__(self):
@@ -38,13 +42,13 @@ class Relation(object):
     def __iter__(self):
         return iter(self.r)
     
-    def spectrum(self):
+    def spectrum(self) -> set:
         result = set()
         for t in self:
             result.add(len(set(t)))
         return result
     
-    def restrict(self, subuniverse):
+    def restrict(self, subuniverse: list | set) -> Relation:
         result = Relation(self.sym, self.arity)
         subuniverse = set(subuniverse)
         for t in self.r:
@@ -61,7 +65,7 @@ class Relation(object):
     def __ne__(self, other):
         return not (self == other)
     
-    def __lt__(self, other):
+    def __lt__(self, other: Relation) -> bool:
         return self.arity > other.arity or self.sym < self.sym  # TODO no ordena bien los symbolos
 
 
@@ -70,13 +74,13 @@ class Operation(object):
     Operation
     """
     
-    def __init__(self, sym, arity):
+    def __init__(self, sym: str, arity: int) -> None:
         self.syntax_sym = formulas.OpSym(sym, arity)
         self.sym = sym
         self.arity = arity
         self.op = dict()
     
-    def add(self, t):
+    def add(self, t: tuple) -> None:
         if len(t) - 1 != self.arity:
             raise ValueError('%s is not of arity %s' % (t[:-1], self.arity))
         self.op[t[:-1]] = t[-1]
@@ -84,7 +88,7 @@ class Operation(object):
     def __repr__(self):
         return "%s : %s" % (self.sym, self.op)
     
-    def __call__(self, *args):
+    def __call__(self, *args: Any) -> Any:
         return self.op[args]
     
     def __len__(self):
@@ -99,7 +103,7 @@ class Operation(object):
     #        result.add(len(set(t)))
     #    return result
     
-    def restrict(self, subuniverse):
+    def restrict(self, subuniverse: list | set) -> Operation:
         result = Operation(self.sym, self.arity)
         subuniverse = set(subuniverse)
         for t in self.op:
@@ -107,6 +111,6 @@ class Operation(object):
                 result.add(t + (self.op[t],))
         return result
     
-    def graph_rel(self):
+    def graph_rel(self) -> Relation:
         rel = {t + (self.op[t],) for t in self.op}
         return Relation("g" + self.sym, self.arity + 1, rel)

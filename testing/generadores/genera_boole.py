@@ -1,7 +1,8 @@
 from genera_ret import closure
 import sys
 
-def main():
+
+def main() -> None:
     try:
         ancho = int(sys.argv[1])
     except:

@@ -4,6 +4,8 @@
 """
 Modulo para calcular HIT de una tupla en un modelo
 """
+from __future__ import annotations
+
 import sys
 from first_order import formulas
 from itertools import product, tee, permutations, chain
@@ -16,6 +18,7 @@ import datetime
 
 from termcolor import colored
 from math import log2
+from typing import Any, Iterator
 
 global model
 # Si True, en cada paso se elige (op, ti) que maximiza information gain.
@@ -25,7 +28,7 @@ USE_INFORMATION_GAIN = False
 IG_SAMPLE = 20
 
 
-def _entropy(in_count, out_count):
+def _entropy(in_count: int, out_count: int) -> float:
     """Entropía de una partición binaria (in target / out of target). 0*log2(0) := 0."""
     n = in_count + out_count
     if n == 0:
@@ -35,7 +38,9 @@ def _entropy(in_count, out_count):
     return -(p * log2(p) if p > 0 else 0) - (q * log2(q) if q > 0 else 0)
 
 
-def _information_gain_from_counts(n, in_total, partition_counts):
+def _information_gain_from_counts(
+    n: int, in_total: int, partition_counts: dict[tuple, tuple[int, int]]
+) -> float:
     """
     Information gain a partir de conteos.
     partition_counts: dict clave -> (in_count, out_count); la clave puede ser (index, in_target).
@@ -50,7 +55,7 @@ def _information_gain_from_counts(n, in_total, partition_counts):
         h_after += (group_size / n) * _entropy(g_in, g_out)
     return h_before - h_after
 
-def check_formula(formula, target):
+def check_formula(formula: formulas.Formula, target: Any) -> None:
     extension = formula.extension(model, target.arity)
     target = set(target.r)
     if target == extension:
@@ -76,11 +81,13 @@ def check_formula(formula, target):
 
 
 class Counterexample(Exception):
-    def __init__(self, a):
+    def __init__(self, a: Any) -> None:
         super(Counterexample, self).__init__(repr(a))
 
 
-def permutations_forced(not_forced_elems, forced_elems, repeat):
+def permutations_forced(
+    not_forced_elems: list, forced_elems: list, repeat: int
+) -> Iterator[tuple]:
     for t in product(not_forced_elems + forced_elems, repeat=repeat):
         if any(e in forced_elems for e in t):
             yield t
@@ -94,7 +101,7 @@ class TupleHistory:
     in_target cachea la polaridad (in/out of target) para evitar recalcular.
     """
     
-    def __init__(self, t, targets):
+    def __init__(self, t: tuple, targets: list) -> None:
         self.t = t
         self.history = list(t)
         self._index_map = {x: i for i, x in enumerate(self.history)}
@@ -102,10 +109,10 @@ class TupleHistory:
         self.in_target = all(tg or tg is None for tg in self.polarity)
         self.has_generated = False
     
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         return self.t == other.t and self.history == other.history
     
-    def step(self, op, ti):
+    def step(self, op: Any, ti: tuple[int, ...]) -> int:
         """
         Toma la operacion y la tupla de indices. Devuelve el indice devuelto.
         Búsqueda O(1) vía _index_map.
@@ -120,7 +127,7 @@ class TupleHistory:
         self.has_generated = True
         return len(self.history) - 1
 
-    def simulate_step(self, op, ti):
+    def simulate_step(self, op: Any, ti: tuple[int, ...]) -> tuple[int, bool]:
         """
         Como step() pero sin mutar: devuelve (indice, has_generated).
         Usa _index_map para O(1).
@@ -131,10 +138,10 @@ class TupleHistory:
             return (xi, False)
         return (len(self.history), True)
     
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash((self.t, tuple(self.history)))
-    
-    def __repr__(self):
+
+    def __repr__(self) -> str:
         return "TupleHistory(t=%s,h=%s,p=%s)" % (self.t, self.history, self.polarity)
 
 
@@ -143,7 +150,16 @@ class IndicesTupleGenerator:
     Clase de HIT pero de indices, toma un modelo ambiente y la tupla generadora
     """
     
-    def __init__(self, operations, arity, generator, viejos, nuevos, sintactico=[], last_term=None):
+    def __init__(
+        self,
+        operations: dict,
+        arity: int,
+        generator: Iterator | None,
+        viejos: list,
+        nuevos: list,
+        sintactico: list | None = None,
+        last_term: Any = None,
+    ) -> None:
         """
         Devuelve tuplas para hacer HIT parcial de indices
         En operaciones estan las operaciones del modelo de la aridad arity
@@ -151,7 +167,7 @@ class IndicesTupleGenerator:
         viejos son los elementos viejos
         nuevos son los elementos que se estan generando ahora
         """
-        self.sintactico = sintactico
+        self.sintactico = sintactico if sintactico is not None else []
         self.viejos = viejos
         self.nuevos = nuevos
         self.arity = arity
@@ -193,7 +209,7 @@ class IndicesTupleGenerator:
                 else:
                     self.finished = True
     
-    def enumerate_candidates(self):
+    def enumerate_candidates(self) -> Iterator[tuple[Any, tuple[int, ...]]]:
         """
         Generador de (op, ti) posibles para el estado actual (viejos, nuevos).
         Usado para elegir el paso por information gain; permite corte temprano sin materializar todos.
@@ -205,25 +221,25 @@ class IndicesTupleGenerator:
             ):
                 yield op_ti
 
-    def set_last_term(self, op, ti):
+    def set_last_term(self, op: Any, ti: tuple[int, ...]) -> None:
         """Fija last_term para la (op, ti) elegida (p. ej. por IG) antes de aplicar el paso."""
         fsym = formulas.OpSym(op.sym, op.arity)
         self.last_term = fsym(*[self.sintactico[i] for i in ti])
 
-    def formula_diferenciadora(self, index):
+    def formula_diferenciadora(self, index: int) -> formulas.Formula:
         """Asumo que acaban de diferenciarse. Resultado memoizado."""
         key = (self.last_term, index)
         if key not in self._formula_diff_cache:
             self._formula_diff_cache[key] = formulas.eq(self.last_term, self.sintactico[index])
         return self._formula_diff_cache[key]
     
-    def hubo_nuevo(self):
+    def hubo_nuevo(self) -> None:
         if self.forked:
             raise ValueError("This generator was forked!")
         self.nuevos.append(len(self.viejos) + len(self.nuevos))
         self.sintactico.append(self.last_term)
     
-    def fork(self, quantity):
+    def fork(self, quantity: int) -> list["IndicesTupleGenerator"]:
         if self.forked:
             raise ValueError("This generator was forked!")
         self.forked = True
@@ -245,7 +261,15 @@ class Block():
     Clase del bloque que va llevando el mismo hit
     """
     
-    def __init__(self, operations, tuples, targets, generator=None, formula=None, fs=None):
+    def __init__(
+        self,
+        operations: dict,
+        tuples: list[TupleHistory],
+        targets: list,
+        generator: IndicesTupleGenerator | None = None,
+        formula: formulas.Formula | None = None,
+        fs: list | None = None,
+    ) -> None:
         """
         :param tuples_in_targets: tuplas en el target
         :param tuples_out_targets: tuplas fuera del target
@@ -269,17 +293,17 @@ class Block():
         else:
             self.generator = generator
     
-    def finished(self):
+    def finished(self) -> bool:
         return self.generator.finished
         
     
-    def is_all_in_targets(self):
+    def is_all_in_targets(self) -> bool:
         return all(th.in_target for th in self.tuples)
     
-    def is_disjunt_to_targets(self):
+    def is_disjunt_to_targets(self) -> bool:
         return all(not th.in_target for th in self.tuples)
-    
-    def step(self):
+
+    def step(self) -> list["Block"]:
         """
         Hace un paso en hit a todas las tuplas.
         Si USE_INFORMATION_GAIN: elige (op, ti) que maximiza information gain (conteos, corte temprano, muestreo).
@@ -387,7 +411,7 @@ class Block():
             results.append(Block(self.operations, tuples_new_block, self.targets, generators[i], f, self.fs))
         return results
     
-    def __repr__(self):
+    def __repr__(self) -> str:
         result = "Block(\n"
         for tuple in self.tuples:
             result += indent(tuple) + "\n"
@@ -396,7 +420,7 @@ class Block():
         return result
 
 
-def is_open_def_iterative(block):
+def is_open_def_iterative(block: Block) -> formulas.Formula:
     """
     Versión iterativa del algoritmo: misma lógica que is_open_def_recursive
     pero con pila explícita para evitar límite de recursión de Python.
@@ -438,7 +462,7 @@ def is_open_def_iterative(block):
     return formulas.false()
 
 
-def is_open_def(model, targets):
+def is_open_def(model: Any, targets: list) -> formulas.Formula:
     targets = sorted(targets, key=lambda tg: tg.sym)
     #assert len(targets) == 1
     assert not model.relations
@@ -459,7 +483,7 @@ def is_open_def(model, targets):
     return is_open_def_iterative(start_block)
 
 
-def main():
+def main() -> None:
     assert sys.version_info >= (3, 7), "Need Python 3.7+"
     global model
     print_formulas = True

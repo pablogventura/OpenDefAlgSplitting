@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 import csv
 import os
 import sys
 from pathlib import Path
+from typing import Any, Optional
 
-directory = sys.argv[1]
+directory: str = sys.argv[1]
 
 files = [os.path.join(dp, f) for dp, dn, fn in os.walk(directory) for f in fn]
 
@@ -29,11 +32,11 @@ for i, f in enumerate(files):
             target = "random"
         else:
             raise ValueError("No es de ningun tipo conocido?")
-        definable = None
-        not_definable = None
-        timeout = None
-        elapsed_time = None
-        error = None
+        definable: Optional[bool] = None
+        not_definable: Optional[bool] = None
+        timeout: Optional[bool] = None
+        elapsed_time: Optional[float] = None
+        error: Optional[int | bool] = None
         if Path(f).stat().st_size > 0:
             datafile = open(f,"r")
             for line in datafile:

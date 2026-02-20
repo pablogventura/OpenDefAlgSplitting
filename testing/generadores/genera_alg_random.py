@@ -1,10 +1,13 @@
+from __future__ import annotations
+
 import datetime
 import sys
 from random import randint
 from itertools import product
+from typing import List
 
 
-def generador(tA, t, c, fs):
+def generador(tA: int, t: int, c: int, fs: list[int]) -> None:
     # tA es el tamaño de la estructura ambiente
     # t es la cantidad de subconjuntos
     # c es el tamaño de esos subconjuntos
@@ -24,7 +27,7 @@ def generador(tA, t, c, fs):
             print(" ".join(str(e) for e in values) + " %s" % fvalues)
 
 
-def main():
+def main() -> None:
     try:
         tA, t, c, fs = sys.argv[1:5]
         try:

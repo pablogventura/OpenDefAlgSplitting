@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf8 -*-
-def subscript(string):
+
+from typing import Union
+
+
+def subscript(string: Union[int, str]) -> str:
     """
     Devuelve un texto en subindice usando unicode
     

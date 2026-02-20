@@ -1,26 +1,31 @@
 # -*- coding: utf-8 -*-
 #!/usr/bin/env python
 
+from __future__ import annotations
+
 from misc import indent
+from typing import Any
 
 
 class Homomorphism(object):
-    def __init__(self, d, source, target, subtype):
+    values: dict
+
+    def __init__(self, d: dict, source: Any, target: Any, subtype: set | list) -> None:
         self.values = d
         self.source = source
         self.target = target
         self.subtype = subtype
 
-    def __call__(self, x):
+    def __call__(self, x: Any) -> Any:
         try:
             return self.values[x]
         except KeyError:
-            return
+            return None
 
-    def vcall(self, xvector):
+    def vcall(self, xvector: tuple) -> tuple:
         return tuple(self(x) for x in xvector)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         result = "Homomorphism(\n"
         for a, b in self.values.items():
             result += "  %s->%s\n" % (a, b)
@@ -31,7 +36,7 @@ class Homomorphism(object):
         result += ")"
         return result
 
-    def homo_wrt(self, subtype):
+    def homo_wrt(self, subtype: set | list) -> bool:
         if self.source.rels_sizes(subtype) > self.target.rels_sizes(subtype):
             return False
         for r in subtype:
@@ -42,26 +47,27 @@ class Homomorphism(object):
 
 
 class Isomorphism(object):
-    def __init__(self, d, source, target, subtype):
+    values: dict
+
+    def __init__(self, d: dict, source: Any, target: Any, subtype: set | list) -> None:
         self.values = d
         self.source = source
         self.target = target
         self.subtype = subtype
 
-    def __call__(self, x):
+    def __call__(self, x: Any) -> Any:
         try:
             return self.values[x]
         except KeyError:
-            return
-        return self.values[x]
+            return None
 
-    def inverse(self):
+    def inverse(self) -> Isomorphism:
         return Isomorphism({v: k for k, v in self.values.items()}, self.target, self.source, self.subtype)
 
-    def vcall(self, xvector):
+    def vcall(self, xvector: tuple) -> tuple:
         return tuple(self(x) for x in xvector)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         result = "Isomorphism(\n"
         for a, b in self.values.items():
             result += "  %s->%s\n" % (a, b)
@@ -72,7 +78,7 @@ class Isomorphism(object):
         result += ")"
         return result
 
-    def iso_wrt(self, subtype):
+    def iso_wrt(self, subtype: set | list) -> bool:
         if self.source.rels_sizes(subtype) != self.target.rels_sizes(subtype):
             print("tamaos distintos")
             return False
@@ -85,22 +91,23 @@ class Isomorphism(object):
 
 
 class Automorphism(object):
-    def __init__(self, d, model, subtype):
+    values: dict
+
+    def __init__(self, d: dict, model: Any, subtype: set | list) -> None:
         self.values = d
         self.model = model
         self.subtype = subtype
 
-    def __call__(self, x):
+    def __call__(self, x: Any) -> Any:
         try:
             return self.values[x]
         except KeyError:
-            return
-        return self.values[x]
+            return None
 
-    def vcall(self, xvector):
+    def vcall(self, xvector: tuple) -> tuple:
         return tuple(self(x) for x in xvector)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         result = "Automorphism(\n"
         for a, b in self.values.items():
             result += "  %s->%s\n" % (a, b)
@@ -109,7 +116,7 @@ class Automorphism(object):
         result += ")"
         return result
 
-    def aut_wrt(self, subtype):
+    def aut_wrt(self, subtype: set | list) -> bool:
         for r in subtype:
             for t in self.model.relations[r]:
                 if not self.model.relations[r](*tuple(self(x) for x in t)):

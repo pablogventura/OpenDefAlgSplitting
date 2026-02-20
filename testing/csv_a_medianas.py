@@ -1,11 +1,14 @@
+from __future__ import annotations
+
 import csv
 import os
 import sys
 import statistics
 from pathlib import Path
 from collections import defaultdict
+from typing import Any, Optional
 
-csv_file = sys.argv[1]
+csv_file: str = sys.argv[1]
 
 csv_file = open(csv_file, 'r')
 reader = csv.reader(csv_file, delimiter=',', quotechar='"')

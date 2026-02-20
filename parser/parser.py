@@ -1,9 +1,13 @@
 # -*- coding: utf-8 -*-
 # !/usr/bin/env python
+
+from __future__ import annotations
+
 import sys
+from typing import Any, Callable, Union
 
 from first_order.models import Model
-from first_order.relops import Relation, Operation
+from first_order.relops import Operation, Relation
 from parser import preprocessing
 from first_order import formulas
 import gzip
@@ -14,11 +18,11 @@ class ParserError(Exception):
     Sintax error while parsing
     """
 
-    def __init__(self, line, path, message):
+    def __init__(self, line: int, path: str | None, message: str) -> None:
         super(ParserError, self).__init__(("Line %s of %s: " % (line, path)) + message)
 
 
-def c_input(line):
+def c_input(line: str | bytes) -> str:
     """
     Clean input
     """
@@ -32,12 +36,12 @@ def c_input(line):
     return line.strip()
 
 
-def parse_universe(line):
+def parse_universe(line: str) -> list:
     # el universo puede estar hecho de strings, de tuplas,etc
     return [eval(i) for i in line.split()]
 
 
-def barajador(t, d1, d2):
+def barajador(t: tuple, d1: tuple, d2: tuple) -> tuple:
     result = list(d1)
     for i, k in enumerate(d2):
         for j in (j for j, x in enumerate(d1) if x == k):
@@ -45,7 +49,7 @@ def barajador(t, d1, d2):
     return tuple(result)
 
 
-def parse_defformula(line, universe, relations, operations):
+def parse_defformula(line: str, universe: list, relations: dict, operations: dict) -> Any:
     # R(x,y) m(x,y) == j(x,y)
     # print("%s interpreted as:" % line)
     if "==" in line:
@@ -86,7 +90,7 @@ def parse_defformula(line, universe, relations, operations):
         raise NotImplemented("Functions declared by formula not implemented")
 
 
-def parse_defrel(line):
+def parse_defrel(line: str) -> tuple[Any, int]:
     sym, ntuples, arity = line.split()
     ntuples, arity = int(ntuples), int(arity)
     if arity == 0:
@@ -94,20 +98,20 @@ def parse_defrel(line):
     return Relation(sym, arity), ntuples
 
 
-def parse_defop(line):
+def parse_defop(line: str) -> Any:
     sym, arity = line.split()
     arity = int(arity)
     return Operation(sym, arity)
 
 
-def parse_tuple(line,universe):
+def parse_tuple(line: str, universe: list) -> tuple:
     t = tuple(map(eval, line.split()))
     assert all(i in universe for i in t), "Tuple %s is not in the universe %s" % (t,universe)
     return t
     
 
 
-def random_delete_tuples(number):
+def random_delete_tuples(number: int) -> Callable[[Any], Any]:
     def f(rel):
         for i in range(number):
             rel.r.pop()
@@ -116,7 +120,7 @@ def random_delete_tuples(number):
     return f
 
 
-def parser(path=None, preprocess=True, verbose=True):
+def parser(path: str | None = None, preprocess: bool = True, verbose: bool = True) -> Model:
     """
     New parser
     """

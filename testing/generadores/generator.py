@@ -1,8 +1,11 @@
+from __future__ import annotations
 
 import os
 from random import randint
+from typing import Any
 
-def generar(*args, cuantity=100):
+
+def generar(*args: Any, cuantity: int = 100) -> None:
     # genera alg random
     args = [str(i) for i in args]
 

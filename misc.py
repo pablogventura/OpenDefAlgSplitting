@@ -2,9 +2,10 @@
 # -*- coding: utf8 -*-
 
 from itertools import chain, combinations
+from typing import Any, Callable, Iterable, Iterator, TypeVar
 
 
-def indent(text):
+def indent(text: Any) -> str:
     r"""
     Indenta un parrafo
 
@@ -24,7 +25,7 @@ def indent(text):
     return text.replace('\n', '\n  ') + "\n"
 
 
-def comment(text):
+def comment(text: Any) -> str:
     r"""
     comenta un parrafo
 
@@ -38,7 +39,10 @@ def comment(text):
     return text.replace('\n', '\n# ') + "\n"
 
 
-def powerset(iterable):
+T = TypeVar("T")
+
+
+def powerset(iterable: Iterable[T]) -> Iterator[list[T]]:
     """
     Devuelve un generador que itera sobre partes del iterable,
     va de mayor a menor.
@@ -50,7 +54,7 @@ def powerset(iterable):
     return map(list, chain.from_iterable(combinations(s, r) for r in range(len(s) + 1, -1, -1)))
 
 
-def compose(f, g):
+def compose(f: Callable[..., Any], g: Callable[..., Any]) -> Callable[..., Any]:
     """
     Compone funciones de Python
 
