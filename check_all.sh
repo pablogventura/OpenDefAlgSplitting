@@ -31,8 +31,8 @@ $PY -m pyright
 echo "OK"
 
 echo ""
-echo "=== pytest con cobertura (incluye subprocesos como main.py) ==="
-$PY -m coverage run -m pytest testing/ -q
+echo "=== pytest con cobertura y tiempos (--durations=15) ==="
+$PY -m coverage run -m pytest testing/ -q --durations=15
 $PY -m coverage combine
 $PY -m coverage report --show-missing
 echo "OK"

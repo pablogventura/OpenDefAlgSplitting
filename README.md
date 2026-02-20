@@ -21,7 +21,7 @@ Run the analysis:
 ruff check .          # Lint
 ruff format .         # Format code (or --check to only verify)
 pyright               # Type checking
-pytest testing/ --cov=. --cov-report=term-missing   # Tests with coverage
+pytest testing/ --cov=. --cov-report=term-missing --durations=15   # Tests with coverage and timing
 ```
 
 Or in one go:

@@ -18,6 +18,12 @@ dev = [
     "pylint>=3.0",
 ]
 
+[tool.pytest.ini_options]
+# Muestra los 15 tests más lentos al final
+addopts = "--durations=15"
+# Duración mínima (s) para aparecer en el reporte
+# duration = 0.5
+
 [tool.ruff]
 target-version = "py37"
 line-length = 100
