@@ -7,7 +7,7 @@ from typing import Union
 def subscript(string: Union[int, str]) -> str:
     """
     Devuelve un texto en subindice usando unicode
-    
+
     >>> subscript(234)
     '₂₃₄'
     >>> subscript("esto es una prueba")

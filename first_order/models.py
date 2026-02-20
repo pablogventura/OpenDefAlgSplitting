@@ -106,8 +106,11 @@ class Model(object):
     def minion_tables(self, subtype: set | list) -> str:
         result = ""
         for r in subtype:
-            result += "%s %s %s\n" % (self.rel_minion_name(r),
-                                      len(self.relations[r]), self.relations[r].arity)
+            result += "%s %s %s\n" % (
+                self.rel_minion_name(r),
+                len(self.relations[r]),
+                self.relations[r].arity,
+            )
             for t in self.relations[r]:
                 result += " ".join(str(self.universe.index(x)) for x in t) + "\n"
             result += "\n"

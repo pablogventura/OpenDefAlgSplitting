@@ -4,6 +4,7 @@ Tests de modelos DEFINIBLES por tipo.
 Cada tipo (boole, aleatorio, grupo-abeliano, etc.) debe tener al menos un test
 con target definible que devuelva DEFINABLE.
 """
+
 import os
 import subprocess
 import sys
@@ -21,6 +22,7 @@ from .conftest import (
 
 # Semilla para reproducibilidad cuando aplique
 import random
+
 random.seed(42)
 
 
@@ -90,7 +92,9 @@ class TestDefinibleGrupoAbeliano:
             f.flush()
             salida = run_main(f.name, timeout=60)
             os.unlink(f.name)
-        assert _es_definible(salida), f"Diagonal en grupo abeliano definible. Salida: {salida[:500]}"
+        assert _es_definible(salida), (
+            f"Diagonal en grupo abeliano definible. Salida: {salida[:500]}"
+        )
 
     def test_grupo_abeliano_diverso_diagonal(self):
         """Grupo abeliano diverso con diagonal definible (eq(x,y))."""

@@ -64,11 +64,12 @@ def write(path: str, data: str) -> None:
     """
     Escribe datos en un archivo
     """
-    f = open(path, 'w')
+    f = open(path, "w")
     f.write(data)
     f.close()
 
 
 if __name__ == "__main__":
     import doctest
+
     doctest.testmod()

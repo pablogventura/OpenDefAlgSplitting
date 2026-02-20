@@ -2,6 +2,7 @@
 """
 Tests de casos bordes y situaciones raras.
 """
+
 import os
 import tempfile
 import pytest
@@ -34,7 +35,9 @@ class TestUniversoPequeno:
         if not model_path.exists():
             pytest.skip("Fixture no existe")
         salida = run_main(str(model_path), timeout=30)
-        assert _es_definible(salida), f"Un único elemento en target es definible. Salida: {salida[:400]}"
+        assert _es_definible(salida), (
+            f"Un único elemento en target es definible. Salida: {salida[:400]}"
+        )
 
     def test_boole_n0_un_elemento(self):
         """Boole(0) = 2^0 = 1 elemento. Target trivial definible."""
@@ -135,7 +138,9 @@ class TestDensidadesExtremas:
             f.flush()
             salida = run_main(f.name, timeout=60)
             os.unlink(f.name)
-        assert _es_definible(salida), "Target total (densidad 1) definible. Salida: %s" % salida[:400]
+        assert _es_definible(salida), (
+            "Target total (densidad 1) definible. Salida: %s" % salida[:400]
+        )
 
 
 class TestGrupoTrivial:

@@ -62,7 +62,9 @@ class Isomorphism(object):
             return None
 
     def inverse(self) -> Isomorphism:
-        return Isomorphism({v: k for k, v in self.values.items()}, self.target, self.source, self.subtype)
+        return Isomorphism(
+            {v: k for k, v in self.values.items()}, self.target, self.source, self.subtype
+        )
 
     def vcall(self, xvector: tuple) -> tuple:
         return tuple(self(x) for x in xvector)

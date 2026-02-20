@@ -2,6 +2,7 @@
 """
 Configuración y fixtures para tests de definibilidad.
 """
+
 import os
 import subprocess
 import sys

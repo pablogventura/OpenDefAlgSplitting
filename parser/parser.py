@@ -32,7 +32,7 @@ def c_input(line: str | bytes) -> str:
         # ya es un string
         pass
     if "#" in line:
-        line = line[:line.find("#")]
+        line = line[: line.find("#")]
     return line.strip()
 
 
@@ -94,7 +94,9 @@ def parse_defrel(line: str) -> tuple[Any, int]:
     sym, ntuples, arity = line.split()
     ntuples, arity = int(ntuples), int(arity)
     if arity == 0:
-        raise ValueError("%s is 0-arity relation, to declare a constant declare 0-arity operation" % sym)
+        raise ValueError(
+            "%s is 0-arity relation, to declare a constant declare 0-arity operation" % sym
+        )
     return Relation(sym, arity), ntuples
 
 
@@ -106,9 +108,8 @@ def parse_defop(line: str) -> Any:
 
 def parse_tuple(line: str, universe: list) -> tuple:
     t = tuple(map(eval, line.split()))
-    assert all(i in universe for i in t), "Tuple %s is not in the universe %s" % (t,universe)
+    assert all(i in universe for i in t), "Tuple %s is not in the universe %s" % (t, universe)
     return t
-    
 
 
 def random_delete_tuples(number: int) -> Callable[[Any], Any]:
@@ -144,7 +145,7 @@ def parser(path: str | None = None, preprocess: bool = True, verbose: bool = Tru
     universe = None
     decorators = []
     for linenumber, line in enumerate(f):
-        assert (current_op is None or current_rel is None)
+        assert current_op is None or current_rel is None
         try:
             line = c_input(line)
             if line:
@@ -173,15 +174,20 @@ def parser(path: str | None = None, preprocess: bool = True, verbose: bool = Tru
                         op_missing_tuples = len(universe) ** current_op.arity
                         if verbose:
                             print("universe %s" % universe)
-                            print("%s tuples: %s" %
-                                  (current_op.sym, op_missing_tuples))
+                            print("%s tuples: %s" % (current_op.sym, op_missing_tuples))
                     elif line.count(" ") == 2:
                         # empieza una relacion
                         current_rel, rel_missing_tuples = parse_defrel(line)
                         if verbose:
                             try:
-                                print("%s density: %f" % (
-                                    current_rel.sym, float(rel_missing_tuples) / (len(universe) ** current_rel.arity)))
+                                print(
+                                    "%s density: %f"
+                                    % (
+                                        current_rel.sym,
+                                        float(rel_missing_tuples)
+                                        / (len(universe) ** current_rel.arity),
+                                    )
+                                )
                             except:
                                 print("WARNING: no pudo calcular la densidad")
                 else:
@@ -189,7 +195,7 @@ def parser(path: str | None = None, preprocess: bool = True, verbose: bool = Tru
                         # continua una relacion
                         try:
                             if rel_missing_tuples:
-                                current_rel.add(parse_tuple(line,universe))
+                                current_rel.add(parse_tuple(line, universe))
                                 rel_missing_tuples -= 1
                             if not rel_missing_tuples:
                                 relations[current_rel.sym] = current_rel
@@ -201,7 +207,7 @@ def parser(path: str | None = None, preprocess: bool = True, verbose: bool = Tru
                     elif current_op is not None:
                         # continua una operacion
                         if op_missing_tuples:
-                            current_op.add(parse_tuple(line,universe))
+                            current_op.add(parse_tuple(line, universe))
                             op_missing_tuples -= 1
                         if not op_missing_tuples:
                             operations[current_op.sym] = current_op
@@ -215,11 +221,9 @@ def parser(path: str | None = None, preprocess: bool = True, verbose: bool = Tru
         raise ParserError(linenumber, path, "Universe not defined")
 
     if current_rel is not None and rel_missing_tuples > 0:
-        raise ParserError(
-            linenumber, path, "Missing tuples for relation %s" % current_rel.sym)
+        raise ParserError(linenumber, path, "Missing tuples for relation %s" % current_rel.sym)
     if current_op is not None:
-        raise ParserError(
-            linenumber, path, "Missing tuples for operation %s" % current_op.sym)
+        raise ParserError(linenumber, path, "Missing tuples for operation %s" % current_op.sym)
 
     if preprocess:
         prep_relations = set()

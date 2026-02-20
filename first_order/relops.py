@@ -13,9 +13,16 @@ class Relation(object):
     """
     Relation
     """
-    
-    def __init__(self, sym: str, arity: int, rel: set | None = None, pattern: Any = None, superrel: Relation | None = None) -> None:
-        self.syntax_sym = formulas.RelSym(sym,arity)
+
+    def __init__(
+        self,
+        sym: str,
+        arity: int,
+        rel: set | None = None,
+        pattern: Any = None,
+        superrel: Relation | None = None,
+    ) -> None:
+        self.syntax_sym = formulas.RelSym(sym, arity)
         self.sym = sym
         self.arity = arity
         self.r = rel if rel is not None else set()
@@ -24,30 +31,30 @@ class Relation(object):
             self.superrel = self
         else:
             self.superrel = superrel
-    
+
     def add(self, t: tuple) -> None:
         if len(t) != self.arity:
-            raise ValueError('%s is not of arity %s' % (t, self.arity))
+            raise ValueError("%s is not of arity %s" % (t, self.arity))
         self.r.add(t)
-    
+
     def __repr__(self):
         return "%s : %s" % (self.sym, self.r)
-    
+
     def __call__(self, *args: Any) -> bool:
         return args in self.r
-    
+
     def __len__(self):
         return len(self.r)
-    
+
     def __iter__(self):
         return iter(self.r)
-    
+
     def spectrum(self) -> set:
         result = set()
         for t in self:
             result.add(len(set(t)))
         return result
-    
+
     def restrict(self, subuniverse: list | set) -> Relation:
         result = Relation(self.sym, self.arity)
         subuniverse = set(subuniverse)
@@ -55,16 +62,16 @@ class Relation(object):
             if set(t) <= subuniverse:
                 result.add(t)
         return result
-    
+
     def __hash__(self):
         return hash(frozenset(self.r))
-    
+
     def __eq__(self, other):
         return (self.sym, self.r) == (other.sym, other.r)
-    
+
     def __ne__(self, other):
         return not (self == other)
-    
+
     def __lt__(self, other: Relation) -> bool:
         return self.arity > other.arity or self.sym < self.sym  # TODO no ordena bien los symbolos
 
@@ -73,36 +80,36 @@ class Operation(object):
     """
     Operation
     """
-    
+
     def __init__(self, sym: str, arity: int) -> None:
         self.syntax_sym = formulas.OpSym(sym, arity)
         self.sym = sym
         self.arity = arity
         self.op = dict()
-    
+
     def add(self, t: tuple) -> None:
         if len(t) - 1 != self.arity:
-            raise ValueError('%s is not of arity %s' % (t[:-1], self.arity))
+            raise ValueError("%s is not of arity %s" % (t[:-1], self.arity))
         self.op[t[:-1]] = t[-1]
-    
+
     def __repr__(self):
         return "%s : %s" % (self.sym, self.op)
-    
+
     def __call__(self, *args: Any) -> Any:
         return self.op[args]
-    
+
     def __len__(self):
         return len(self.op)
-    
+
     # def __iter__(self):
     #    return iter(self.r)
-    
+
     # def spectrum(self):
     #    result = set()
     #    for t in self:
     #        result.add(len(set(t)))
     #    return result
-    
+
     def restrict(self, subuniverse: list | set) -> Operation:
         result = Operation(self.sym, self.arity)
         subuniverse = set(subuniverse)
@@ -110,7 +117,7 @@ class Operation(object):
             if set(t) <= subuniverse:
                 result.add(t + (self.op[t],))
         return result
-    
+
     def graph_rel(self) -> Relation:
         rel = {t + (self.op[t],) for t in self.op}
         return Relation("g" + self.sym, self.arity + 1, rel)

@@ -3,6 +3,7 @@ from itertools import permutations
 from math import factorial
 import sys
 
+
 def iter_sample_fast(iterable, samplesize):
     results = []
     iterator = iter(iterable)
@@ -19,22 +20,25 @@ def iter_sample_fast(iterable, samplesize):
             results[r] = v  # at a decreasing rate, replace random items
     return results
 
+
 def c_input(line):
     """
     Clean input
     """
     if "#" in line:
-        line = line[:line.find("#")]
+        line = line[: line.find("#")]
     return line.strip()
+
 
 def parse_universe(line):
     # el universo puede estar hecho de strings, de tuplas,etc
     return [eval(i) for i in line.split()]
 
-def random_target(universe,tarity,density):
+
+def random_target(universe, tarity, density):
     tuplas = permutations(universe, r=tarity)
     card = len(universe)
-    cantidad = factorial(card) // factorial(card-tarity)
+    cantidad = factorial(card) // factorial(card - tarity)
     target = []
     for i in iter_sample_fast(tuplas, cantidad):
         if random.random() < density:
@@ -43,15 +47,18 @@ def random_target(universe,tarity,density):
     for t in target:
         print(t)
 
+
 def main():
     try:
         arity, density = sys.argv[1:3]
         arity = int(arity)
         density = float(density)
     except:
-        print("Toma la aridad y la densidad del target aleatorio y lo agrega a un archivo model que este entrando por la stdin")
+        print(
+            "Toma la aridad y la densidad del target aleatorio y lo agrega a un archivo model que este entrando por la stdin"
+        )
         return
-    print("# Target random arity pure=%s, density=%s" % (arity,density))
+    print("# Target random arity pure=%s, density=%s" % (arity, density))
     universe = None
     try:
         while not universe:
@@ -64,7 +71,7 @@ def main():
             line = input()
             print(line)
     except EOFError:
-        random_target(universe,arity,density)
+        random_target(universe, arity, density)
 
 
 if __name__ == "__main__":

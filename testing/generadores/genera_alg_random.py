@@ -13,9 +13,11 @@ def generador(tA: int, t: int, c: int, fs: list[int]) -> None:
     # c es el tamaño de esos subconjuntos
     # fs es una lista de aridades de funciones
     # fc es una lista de booleanos para hacer a la funcion hiperconmutativa
-    print('# Generated {0:%Y-%m-%d %H:%M:%S}'.format(datetime.datetime.now()))
-    print('# Parameters: |A| = %s, |MaxSubs| = %s, |ms| = %s with ms in MaxSubs, Arities = %s' % (
-        tA, t, c, fs))
+    print("# Generated {0:%Y-%m-%d %H:%M:%S}".format(datetime.datetime.now()))
+    print(
+        "# Parameters: |A| = %s, |MaxSubs| = %s, |ms| = %s with ms in MaxSubs, Arities = %s"
+        % (tA, t, c, fs)
+    )
 
     # result += "# Random Seed: %s\n" % seed
     cardinality = tA
@@ -23,7 +25,7 @@ def generador(tA: int, t: int, c: int, fs: list[int]) -> None:
     for i, arity in enumerate(fs):
         print("f%s %s" % (i, arity))
         for values in product(range(cardinality), repeat=arity):
-            fvalues = randint(0,cardinality-1)
+            fvalues = randint(0, cardinality - 1)
             print(" ".join(str(e) for e in values) + " %s" % fvalues)
 
 

@@ -24,7 +24,7 @@ class Pattern(object):
                 self.pruned_tuple.append(a)
         self.pruned_tuple = tuple(self.pruned_tuple)
         self.pattern = frozenset(frozenset(s) for s in pattern.values())
-    
+
     def name(self):
         result = "|"
         for cls in self.pattern:
@@ -32,13 +32,13 @@ class Pattern(object):
             result += "|"
         result += "a%s" % len(self.pruned_tuple)
         return result
-    
+
     def __hash__(self):
         return hash(self.pattern)
-    
-    def __eq__(self,other):
+
+    def __eq__(self, other):
         return hash(self.pattern) == hash(other.pattern)
-    
+
     def preprocessed_formula(self):
         f = formulas.true()
         vs = formulas.variables(*list(range(len(self.tuple))))
@@ -46,13 +46,13 @@ class Pattern(object):
         vs = [vs[i] for i in representantes]
         if len(vs) == 1:
             # caso especial en que hay un top declarado en una unica variable
-            f &= formulas.eq(vs[0],vs[0])
+            f &= formulas.eq(vs[0], vs[0])
         for v in vs:
             for w in vs:
                 if v is not w:
                     f = f & -formulas.eq(v, w)
         return f
-    
+
     def postprocessed_formula(self):
         f = formulas.true()
         vs = formulas.variables(*list(range(len(self.tuple))))
@@ -60,7 +60,7 @@ class Pattern(object):
         for cls in self.pattern:
             # aca decimos las partes que son iguales
             cls = list(cls)
-            for i,j in zip(cls,cls[1:]):
+            for i, j in zip(cls, cls[1:]):
                 f = f & formulas.eq(vs[i], vs[j])
             # aca viene el momento en que la formula dice que son distintos
             representante = vs[min(cls)]
@@ -68,7 +68,7 @@ class Pattern(object):
                 f = f & -formulas.eq(representante, otro)
             differents.append(representante)
         return f
-    
+
     def __repr__(self):
         result = "Pattern(\n"
         result += indent("tuple = %s\n" % (self.tuple,))
@@ -76,6 +76,7 @@ class Pattern(object):
         result += indent("formula = %s\n" % self.formula())
         result += ")"
         return result
+
 
 def quotient(s: set, f: Any) -> dict:
     # cociente del conjunto s, por la funcion f
@@ -90,6 +91,7 @@ def quotient(s: set, f: Any) -> dict:
                 result[a] += result[b]
                 del result[b]
     return result
+
 
 def limpia(t: tuple) -> list:
     result = set()
@@ -136,5 +138,7 @@ def preprocesamiento2(target: Relation) -> list[Relation]:
         first_tuple = pruned_relations[pattern][0]
         arity = len(first_tuple)
         patron_name = "_".join(str(i) for i in first_tuple)
-        result.append(Relation(target.sym + pattern.name(),arity,pruned_relations[pattern],pattern,target))
+        result.append(
+            Relation(target.sym + pattern.name(), arity, pruned_relations[pattern], pattern, target)
+        )
     return result

@@ -4,6 +4,7 @@
 """
 Modulo para calcular HIT de una tupla en un modelo
 """
+
 from __future__ import annotations
 
 import sys
@@ -50,34 +51,35 @@ def _information_gain_from_counts(
     out_total = n - in_total
     h_before = _entropy(in_total, out_total)
     h_after = 0.0
-    for (g_in, g_out) in partition_counts.values():
+    for g_in, g_out in partition_counts.values():
         group_size = g_in + g_out
         h_after += (group_size / n) * _entropy(g_in, g_out)
     return h_before - h_after
+
 
 def check_formula(formula: formulas.Formula, target: Any) -> None:
     extension = formula.extension(model, target.arity)
     target = set(target.r)
     if target == extension:
-        print(colored("Formula successfully checked","green"))
-        #print("Extension:")
-        #for t in (extension):
+        print(colored("Formula successfully checked", "green"))
+        # print("Extension:")
+        # for t in (extension):
         #    print(" ".join(str(e) for e in t))
-        #print("Target:")
-        #for t in (target):
+        # print("Target:")
+        # for t in (target):
         #    print(" ".join(str(e) for e in t))
     else:
         print("Extension len: %s" % len(extension))
         print("Target len:    %s" % len(target))
         print("Intersection len:    %s" % len(target.intersection(extension)))
         print("Faltan:")
-        for t in (target - extension):
+        for t in target - extension:
             print(" ".join(str(e) for e in t))
         print("Sobran:")
-        for t in (extension - target):
+        for t in extension - target:
             print(" ".join(str(e) for e in t))
-        print(colored("Formula failed!","red"))
-    print("#"*80)
+        print(colored("Formula failed!", "red"))
+    print("#" * 80)
 
 
 class Counterexample(Exception):
@@ -85,9 +87,7 @@ class Counterexample(Exception):
         super(Counterexample, self).__init__(repr(a))
 
 
-def permutations_forced(
-    not_forced_elems: list, forced_elems: list, repeat: int
-) -> Iterator[tuple]:
+def permutations_forced(not_forced_elems: list, forced_elems: list, repeat: int) -> Iterator[tuple]:
     for t in product(not_forced_elems + forced_elems, repeat=repeat):
         if any(e in forced_elems for e in t):
             yield t
@@ -100,7 +100,7 @@ class TupleHistory:
     _index_map mantiene valor -> índice para búsqueda O(1).
     in_target cachea la polaridad (in/out of target) para evitar recalcular.
     """
-    
+
     def __init__(self, t: tuple, targets: list) -> None:
         self.t = t
         self.history = list(t)
@@ -108,10 +108,10 @@ class TupleHistory:
         self.polarity = tuple(tg(*t) for tg in targets)
         self.in_target = all(tg or tg is None for tg in self.polarity)
         self.has_generated = False
-    
+
     def __eq__(self, other: object) -> bool:
         return self.t == other.t and self.history == other.history
-    
+
     def step(self, op: Any, ti: tuple[int, ...]) -> int:
         """
         Toma la operacion y la tupla de indices. Devuelve el indice devuelto.
@@ -137,7 +137,7 @@ class TupleHistory:
         if xi is not None:
             return (xi, False)
         return (len(self.history), True)
-    
+
     def __hash__(self) -> int:
         return hash((self.t, tuple(self.history)))
 
@@ -149,7 +149,7 @@ class IndicesTupleGenerator:
     """
     Clase de HIT pero de indices, toma un modelo ambiente y la tupla generadora
     """
-    
+
     def __init__(
         self,
         operations: dict,
@@ -176,20 +176,19 @@ class IndicesTupleGenerator:
         self.finished = False
         self.last_term = last_term  # ultima term
         self._formula_diff_cache = {}  # (last_term, index) -> formula, para memoización
-        
+
         assert type(self.ops) == dict
-        
+
         if generator is None:
             if 0 in self.ops:
-                #hay constantes entre las operaciones
-                self.generator = ((constant,tuple()) for constant in self.ops[0])
+                # hay constantes entre las operaciones
+                self.generator = ((constant, tuple()) for constant in self.ops[0])
             else:
                 self.generator = iter([])
-            #chain(*[product(self.ops[arity], permutations_forced(self.viejos, self.nuevos, arity)) for arity in sorted(self.ops.keys())])
+            # chain(*[product(self.ops[arity], permutations_forced(self.viejos, self.nuevos, arity)) for arity in sorted(self.ops.keys())])
         else:
             self.generator = generator
 
-    
     def step(self):
         if self.forked:
             raise ValueError("This generator was forked!")
@@ -199,16 +198,24 @@ class IndicesTupleGenerator:
                 fsym = formulas.OpSym(f.sym, f.arity)
                 self.last_term = fsym(*[self.sintactico[i] for i in ti])
                 return (f, ti)  # devuelve la operacion y la tupla de indices
-            
+
             except StopIteration:
                 if self.nuevos:
-                    self.generator = chain(*[product(self.ops[arity], permutations_forced(self.viejos, self.nuevos, arity)) for arity in self.ops])
+                    self.generator = chain(
+                        *[
+                            product(
+                                self.ops[arity],
+                                permutations_forced(self.viejos, self.nuevos, arity),
+                            )
+                            for arity in self.ops
+                        ]
+                    )
                     self.viejos += self.nuevos
                     self.nuevos = []  # todos se gastaron para hacer el nuevo generador
                     self.finished = False
                 else:
                     self.finished = True
-    
+
     def enumerate_candidates(self) -> Iterator[tuple[Any, tuple[int, ...]]]:
         """
         Generador de (op, ti) posibles para el estado actual (viejos, nuevos).
@@ -232,13 +239,13 @@ class IndicesTupleGenerator:
         if key not in self._formula_diff_cache:
             self._formula_diff_cache[key] = formulas.eq(self.last_term, self.sintactico[index])
         return self._formula_diff_cache[key]
-    
+
     def hubo_nuevo(self) -> None:
         if self.forked:
             raise ValueError("This generator was forked!")
         self.nuevos.append(len(self.viejos) + len(self.nuevos))
         self.sintactico.append(self.last_term)
-    
+
     def fork(self, quantity: int) -> list["IndicesTupleGenerator"]:
         if self.forked:
             raise ValueError("This generator was forked!")
@@ -248,19 +255,24 @@ class IndicesTupleGenerator:
         generators = tee(self.generator, quantity)
         for i in range(quantity):
             g = IndicesTupleGenerator(
-                self.ops, self.arity, generators[i], list(self.viejos), list(self.nuevos),
-                list(self.sintactico), self.last_term,
+                self.ops,
+                self.arity,
+                generators[i],
+                list(self.viejos),
+                list(self.nuevos),
+                list(self.sintactico),
+                self.last_term,
             )
             g._formula_diff_cache = dict(self._formula_diff_cache)
             result.append(g)
         return result
 
 
-class Block():
+class Block:
     """
     Clase del bloque que va llevando el mismo hit
     """
-    
+
     def __init__(
         self,
         operations: dict,
@@ -288,18 +300,23 @@ class Block():
             self.fs = fs
         if generator is None:
             assert len(self.formula.free_vars()) > 0
-            self.generator = IndicesTupleGenerator(self.operations, self.arity, None, [], list(range(self.arity)),
-                                                   sorted(self.formula.free_vars()))
+            self.generator = IndicesTupleGenerator(
+                self.operations,
+                self.arity,
+                None,
+                [],
+                list(range(self.arity)),
+                sorted(self.formula.free_vars()),
+            )
         else:
             self.generator = generator
-    
+
     def finished(self) -> bool:
         return self.generator.finished
-        
-    
+
     def is_all_in_targets(self) -> bool:
         return all(th.in_target for th in self.tuples)
-    
+
     def is_disjunt_to_targets(self) -> bool:
         return all(not th.in_target for th in self.tuples)
 
@@ -317,7 +334,7 @@ class Block():
                 if not cand_list:
                     self.generator.finished = True
                     return [self]
-                cand_gen = iter(cand_list[: IG_SAMPLE])
+                cand_gen = iter(cand_list[:IG_SAMPLE])
             else:
                 first = next(cand_gen, None)
                 if first is None:
@@ -338,7 +355,9 @@ class Block():
                         part[key][0] += 1
                     else:
                         part[key][1] += 1
-                ig = _information_gain_from_counts(n, in_total, {k: tuple(v) for k, v in part.items()})
+                ig = _information_gain_from_counts(
+                    n, in_total, {k: tuple(v) for k, v in part.items()}
+                )
                 if ig > best_ig:
                     best_ig = ig
                     best_op, best_ti = op, ti
@@ -376,11 +395,24 @@ class Block():
                 else:
                     f = self.formula & generators[i].formula_diferenciadora(index)
                     fneg = fneg & -generators[i].formula_diferenciadora(index)
-                    results.append(Block(self.operations, tuples_new_block, self.targets, generators[i], f, self.fs))
+                    results.append(
+                        Block(
+                            self.operations,
+                            tuples_new_block,
+                            self.targets,
+                            generators[i],
+                            f,
+                            self.fs,
+                        )
+                    )
             for i, index in negados:
                 tuples_new_block = result[index]
                 f = self.formula & fneg
-                results.append(Block(self.operations, tuples_new_block, self.targets, generators[i], f, self.fs))
+                results.append(
+                    Block(
+                        self.operations, tuples_new_block, self.targets, generators[i], f, self.fs
+                    )
+                )
             return results
 
         result = defaultdict(list)
@@ -404,13 +436,19 @@ class Block():
             else:
                 f = self.formula & generators[i].formula_diferenciadora(index)
                 fneg = fneg & -generators[i].formula_diferenciadora(index)
-                results.append(Block(self.operations, tuples_new_block, self.targets, generators[i], f, self.fs))
+                results.append(
+                    Block(
+                        self.operations, tuples_new_block, self.targets, generators[i], f, self.fs
+                    )
+                )
         for i, index in negados:
             tuples_new_block = result[index]
             f = self.formula & fneg
-            results.append(Block(self.operations, tuples_new_block, self.targets, generators[i], f, self.fs))
+            results.append(
+                Block(self.operations, tuples_new_block, self.targets, generators[i], f, self.fs)
+            )
         return results
-    
+
     def __repr__(self) -> str:
         result = "Block(\n"
         for tuple in self.tuples:
@@ -464,9 +502,9 @@ def is_open_def_iterative(block: Block) -> formulas.Formula:
 
 def is_open_def(model: Any, targets: list) -> formulas.Formula:
     targets = sorted(targets, key=lambda tg: tg.sym)
-    #assert len(targets) == 1
+    # assert len(targets) == 1
     assert not model.relations
-    
+
     # Lista ordenada para iteración determinista (set daría orden arbitrario entre ejecuciones).
     tuples = sorted(
         [TupleHistory(t, targets) for t in permutations(model.universe, r=targets[0].arity)],
@@ -478,7 +516,9 @@ def is_open_def(model: Any, targets: list) -> formulas.Formula:
     for arity in operations:
         operations[arity].sort(key=lambda o: o.sym)
     operations = dict(operations)
-    start_block = Block(operations, tuples, targets, formula=targets[0].pattern.preprocessed_formula())
+    start_block = Block(
+        operations, tuples, targets, formula=targets[0].pattern.preprocessed_formula()
+    )
     # el posproceso debe reemplazar nombres no solo agregar una formula
     return is_open_def_iterative(start_block)
 
@@ -490,7 +530,7 @@ def main() -> None:
     check_solution = True
     check_partial_solutions = False
     today = datetime.datetime.today()
-    print(today.strftime('%Y-%m-%d %H:%M:%S.%f'))
+    print(today.strftime("%Y-%m-%d %H:%M:%S.%f"))
     try:
         model = parser(sys.argv[1], preprocess=True)
     except IndexError:
@@ -521,8 +561,9 @@ def main() -> None:
                 if check_partial_solutions:
                     check_formula(f, target_rel)
 
-                
-                formula = formula | (f  & target_rel.pattern.postprocessed_formula()) # aca se posprocesa
+                formula = formula | (
+                    f & target_rel.pattern.postprocessed_formula()
+                )  # aca se posprocesa
 
             except Counterexample as e:
                 print("NOT DEFINABLE")
@@ -536,7 +577,7 @@ def main() -> None:
     time_hit = time() - start_hit
     print("Elapsed time: %s" % time_hit)
     if check_solution:
-        check_formula(formula,targets_rels[0].superrel)
+        check_formula(formula, targets_rels[0].superrel)
 
 
 if __name__ == "__main__":

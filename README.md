@@ -7,6 +7,28 @@ Open Definability checker for finite algebras. Decides whether relations are def
 - Python 3.7+
 - Dependencies: `termcolor`, `pytest` (install with `pip install -r requirements.txt`)
 
+## Static analysis and formatting
+
+Development dependencies include Ruff (linter + formatter) and Pyright (type checker):
+
+```bash
+pip install -r requirements-dev.txt
+```
+
+Run the analysis:
+
+```bash
+ruff check .          # Lint
+ruff format .         # Format code (or --check to only verify)
+pyright               # Type checking
+```
+
+Or in one go:
+
+```bash
+ruff check . && ruff format --check . && pyright
+```
+
 ## Usage
 
 To run a definability check:

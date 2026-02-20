@@ -10,9 +10,11 @@ directory: str = sys.argv[1]
 
 files = [os.path.join(dp, f) for dp, dn, fn in os.walk(directory) for f in fn]
 
-results_file = open("results.csv", 'w')
+results_file = open("results.csv", "w")
 wr = csv.writer(results_file, quoting=csv.QUOTE_ALL)
-wr.writerow(["filename", "estructura", "target", "definable", "cardinality", "elapsed_time", "error"])
+wr.writerow(
+    ["filename", "estructura", "target", "definable", "cardinality", "elapsed_time", "error"]
+)
 
 for i, f in enumerate(files):
     if f.endswith(".stderr"):
@@ -38,22 +40,22 @@ for i, f in enumerate(files):
         elapsed_time: Optional[float] = None
         error: Optional[int | bool] = None
         if Path(f).stat().st_size > 0:
-            datafile = open(f,"r")
+            datafile = open(f, "r")
             for line in datafile:
-                if 'Traceback' in line or 'ERROR' in line or "failed" in line:
+                if "Traceback" in line or "ERROR" in line or "failed" in line:
                     error = 28
-                if 'NOT DEFINABLE' in line:
+                if "NOT DEFINABLE" in line:
                     not_definable = True
-                elif 'DEFINABLE' in line:
+                elif "DEFINABLE" in line:
                     definable = True
                 elif line.startswith("Elapsed time: "):
-                    elapsed_time = float(line[len("Elapsed time: "):-1])
+                    elapsed_time = float(line[len("Elapsed time: ") : -1])
             datafile.close()
         else:
             timeout = True
-            
+
         if timeout == True:
-            elapsed_time = float('inf')
+            elapsed_time = float("inf")
             definable = None
         else:
             if definable is None and not_definable is None and not error:

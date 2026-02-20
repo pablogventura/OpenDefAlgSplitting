@@ -2,6 +2,7 @@
 """
 Tests del parser: formato, errores, relaciones por fórmula.
 """
+
 import pytest
 from pathlib import Path
 
@@ -64,6 +65,7 @@ class TestPreprocesamiento:
     def test_preprocesamiento_un_patron(self):
         """Target con un único patrón de igualdad."""
         from first_order.relops import Relation
+
         r = Relation("T0", 2, {(0, 1), (1, 0)})
         preps = preprocessing.preprocesamiento2(r)
         assert len(preps) >= 1
@@ -78,6 +80,7 @@ class TestPreprocesamiento:
     def test_pattern_pre_post_formula(self):
         """Las fórmulas de pre y post procesamiento son consistentes."""
         from parser.preprocessing import Pattern
+
         t = (0, 1, 1)  # x, y, y
         p = Pattern(t)
         pre = p.preprocessed_formula()

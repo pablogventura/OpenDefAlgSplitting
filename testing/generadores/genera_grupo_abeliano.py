@@ -1,11 +1,11 @@
 from itertools import product
 import sys
 
-#todo grupo abeliano finito es un producto directo de Z_k
+# todo grupo abeliano finito es un producto directo de Z_k
 
-def clean_print(value,universe):
+
+def clean_print(value, universe):
     print(" ".join(str(universe.index(v)) for v in value))
-        
 
 
 def generador(numeros):
@@ -16,20 +16,19 @@ def generador(numeros):
     for a, b in product(universe, universe):
         r = []
         for i in range(len(a)):
-            r.append((a[i]+b[i]) % numeros[i])
-        clean_print((a, b, tuple(r)),universe)
+            r.append((a[i] + b[i]) % numeros[i])
+        clean_print((a, b, tuple(r)), universe)
     print("")
     print("Neg 1")
     for a in universe:
         r = []
         for i in range(len(a)):
             r.append((-a[i]) % numeros[i])
-        clean_print((a, tuple(r)),universe)
+        clean_print((a, tuple(r)), universe)
     print("")
     print("Zero 0")
-    clean_print([(0,)*len(numeros)],universe)
+    clean_print([(0,) * len(numeros)], universe)
     print("")
-
 
 
 def main():

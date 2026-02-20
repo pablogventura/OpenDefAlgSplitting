@@ -9,7 +9,7 @@ def main() -> None:
         print("Toma i tal que el algebra de boole tenga 2^i elementos")
         sys.exit(1)
     muestra = 2**ancho
-    
+
     closure(ancho, muestra)
 
 

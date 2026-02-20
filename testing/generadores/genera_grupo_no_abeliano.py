@@ -1,25 +1,29 @@
-from itertools import product,permutations
+from itertools import product, permutations
 from random import sample
 import sys
 
+
 # para todo grupo hay un k tal que es un subgrupo del grupo de k-permutaciones
 # genera grupos en general ( no solo no abelianos)
-def clean_print(value,universe):
+def clean_print(value, universe):
     print(" ".join(str(universe.index(v)) for v in value))
 
+
 def inverse(a):
-    
+
     r = []
     for i in range(len(a)):
         r.append(a.index(i))
     return tuple(r)
 
-def compose(a,b):
-    assert len(a)==len(b)
+
+def compose(a, b):
+    assert len(a) == len(b)
     r = []
     for i in range(len(a)):
         r.append(b[a[i]])
     return tuple(r)
+
 
 def generador(k, cant_generadores, cardinalidad_exacta=None):
     """
@@ -29,19 +33,22 @@ def generador(k, cant_generadores, cardinalidad_exacta=None):
     """
     permutaciones = list(permutations(range(k)))
     print("# Cantidad de permutaciones posibles: %s" % len(permutaciones))
-    
-    sigo=True
+
+    sigo = True
     universe = set(sample(permutaciones, cant_generadores))
     universe.add(tuple(range(k)))
     while sigo:
         sigo = False
-        for a,b in product(universe,universe):
-            
-            r = compose(a,b)
+        for a, b in product(universe, universe):
+            r = compose(a, b)
             if r not in universe:
                 universe.add(r)
                 sigo = True
-        if (cardinalidad_exacta and (len(universe) > cardinalidad_exacta) or (cardinalidad_exacta and (not sigo and len(universe) < cardinalidad_exacta))):
+        if (
+            cardinalidad_exacta
+            and (len(universe) > cardinalidad_exacta)
+            or (cardinalidad_exacta and (not sigo and len(universe) < cardinalidad_exacta))
+        ):
             universe = set(sample(permutaciones, min(cant_generadores, len(permutaciones))))
             universe.add(tuple(range(k)))
             sigo = True
@@ -55,12 +62,12 @@ def generador(k, cant_generadores, cardinalidad_exacta=None):
     print("O 2")
     for a, b in product(universe, universe):
         r = compose(a, b)
-        clean_print((a,b,r),universe)
+        clean_print((a, b, r), universe)
     print("")
     print("I 1")
     for a in universe:
         r = inverse(a)
-        clean_print((a,r),universe)
+        clean_print((a, r), universe)
     print("")
 
 
@@ -75,7 +82,7 @@ def main():
     try:
         cardinalidad_exacta = int(sys.argv[3])
     except:
-        cardinalidad_exacta=None
+        cardinalidad_exacta = None
     generador(k, cant_generadores, cardinalidad_exacta)
 
 

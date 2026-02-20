@@ -8,6 +8,7 @@ Uso típico:
     python genera_modelos.py aleatorio 7 --aridades 2 --target 2 0.1 -o modelo.model
     python genera_modelos.py grupo-abeliano 2 2 2 --target 2 0.5
 """
+
 import argparse
 import io
 import subprocess
@@ -50,9 +51,16 @@ def _add_target(content, arity, density):
     universe = _extract_universe(content)
     universe_str = " ".join(str(x) for x in universe)
     result = subprocess.run(
-        [sys.executable, str(GENERADORES_DIR / "randomtarget_separado.py"),
-         universe_str, str(arity), str(density)],
-        capture_output=True, text=True, cwd=str(GENERADORES_DIR)
+        [
+            sys.executable,
+            str(GENERADORES_DIR / "randomtarget_separado.py"),
+            universe_str,
+            str(arity),
+            str(density),
+        ],
+        capture_output=True,
+        text=True,
+        cwd=str(GENERADORES_DIR),
     )
     if result.returncode != 0:
         raise RuntimeError(f"Error al generar target: {result.stderr}")
@@ -71,9 +79,10 @@ def cmd_aleatorio(args):
     """Álgebra con operaciones aleatorias."""
     aridades = args.aridades or [2]
     aridades_str = str(aridades)
-    out = _run_generator("genera_alg_random.py", [
-        args.cardinalidad, args.subs or 0, args.tam_subs or 0, aridades_str
-    ])
+    out = _run_generator(
+        "genera_alg_random.py",
+        [args.cardinalidad, args.subs or 0, args.tam_subs or 0, aridades_str],
+    )
     if args.target:
         out = _add_target(out, args.target[0], args.target[1])
     return out
@@ -116,16 +125,17 @@ def cmd_reticulado(args):
 
 def cmd_target(args):
     """Solo target aleatorio (sin operaciones)."""
-    return _run_generator("randomtarget_separado.py", [
-        args.cardinalidad, args.aridad, args.densidad
-    ])
+    return _run_generator(
+        "randomtarget_separado.py", [args.cardinalidad, args.aridad, args.densidad]
+    )
 
 
 def main():
     # Parser base con opciones globales (usar parents para que las hereden los subcomandos)
     global_parser = argparse.ArgumentParser(add_help=False)
     global_parser.add_argument(
-        "-o", "--output",
+        "-o",
+        "--output",
         metavar="ARCHIVO",
         help="Archivo de salida (por defecto: stdout)",
     )
@@ -153,45 +163,70 @@ Ejemplos:
     subparsers = parser.add_subparsers(dest="comando", required=True, help="Tipo de modelo")
 
     # boole
-    p_boole = subparsers.add_parser("boole", parents=[global_parser], help="Álgebra de Boole (2^n elementos)")
+    p_boole = subparsers.add_parser(
+        "boole", parents=[global_parser], help="Álgebra de Boole (2^n elementos)"
+    )
     p_boole.add_argument("n", type=int, help="Exponente: álgebra tendrá 2^n elementos")
     p_boole.set_defaults(func=cmd_boole)
 
     # aleatorio
-    p_aleatorio = subparsers.add_parser("aleatorio", parents=[global_parser], help="Álgebra con operaciones aleatorias")
+    p_aleatorio = subparsers.add_parser(
+        "aleatorio", parents=[global_parser], help="Álgebra con operaciones aleatorias"
+    )
     p_aleatorio.add_argument("cardinalidad", type=int, help="Cardinalidad del universo")
     p_aleatorio.add_argument("--subs", type=int, default=0, help="Cantidad de subuniversos (0)")
     p_aleatorio.add_argument("--tam-subs", type=int, default=0, help="Tamaño de subuniversos (0)")
-    p_aleatorio.add_argument("--aridades", nargs="+", type=int, default=None,
-                             help="Aridades de operaciones, ej: 2 2 para dos binarias")
+    p_aleatorio.add_argument(
+        "--aridades",
+        nargs="+",
+        type=int,
+        default=None,
+        help="Aridades de operaciones, ej: 2 2 para dos binarias",
+    )
     p_aleatorio.set_defaults(func=cmd_aleatorio)
 
     # grupo-abeliano
-    p_ga = subparsers.add_parser("grupo-abeliano", parents=[global_parser], help="Grupo abeliano Z_n1 x Z_n2 x ...")
+    p_ga = subparsers.add_parser(
+        "grupo-abeliano", parents=[global_parser], help="Grupo abeliano Z_n1 x Z_n2 x ..."
+    )
     p_ga.add_argument("ordenes", nargs="+", type=int, help="Órdenes cíclicos, ej: 2 2 2 para Z2³")
     p_ga.set_defaults(func=cmd_grupo_abeliano)
 
     # grupo-abeliano-diverso
-    p_gad = subparsers.add_parser("grupo-abeliano-diverso", parents=[global_parser], help="Grupo abeliano diverso de tamaño 2^k")
+    p_gad = subparsers.add_parser(
+        "grupo-abeliano-diverso",
+        parents=[global_parser],
+        help="Grupo abeliano diverso de tamaño 2^k",
+    )
     p_gad.add_argument("k", type=int, help="Tamaño = 2^k")
     p_gad.set_defaults(func=cmd_grupo_abeliano_diverso)
 
     # grupo-no-abeliano
-    p_gna = subparsers.add_parser("grupo-no-abeliano", parents=[global_parser], help="Grupo de permutaciones (no abeliano)")
+    p_gna = subparsers.add_parser(
+        "grupo-no-abeliano", parents=[global_parser], help="Grupo de permutaciones (no abeliano)"
+    )
     p_gna.add_argument("k", type=int, help="k para grupo de k-permutaciones")
     p_gna.add_argument("generadores", type=int, help="Cantidad de generadores iniciales")
-    p_gna.add_argument("--cardinalidad-exacta", type=int, default=None,
-                       help="Cardinalidad deseada del subgrupo (opcional)")
+    p_gna.add_argument(
+        "--cardinalidad-exacta",
+        type=int,
+        default=None,
+        help="Cardinalidad deseada del subgrupo (opcional)",
+    )
     p_gna.set_defaults(func=cmd_grupo_no_abeliano)
 
     # reticulado
-    p_ret = subparsers.add_parser("reticulado", parents=[global_parser], help="Reticulado distributivo (subálgebra de Boole)")
+    p_ret = subparsers.add_parser(
+        "reticulado", parents=[global_parser], help="Reticulado distributivo (subálgebra de Boole)"
+    )
     p_ret.add_argument("ancho", type=int, help="Álgebra de Boole ambiente: 2^ancho elementos")
     p_ret.add_argument("muestra", type=int, help="Número de elementos para generar subuniverso")
     p_ret.set_defaults(func=cmd_reticulado)
 
     # target solo
-    p_target = subparsers.add_parser("target", parents=[global_parser], help="Solo target aleatorio (sin operaciones)")
+    p_target = subparsers.add_parser(
+        "target", parents=[global_parser], help="Solo target aleatorio (sin operaciones)"
+    )
     p_target.add_argument("cardinalidad", type=int, help="Cardinalidad del universo")
     p_target.add_argument("aridad", type=int, help="Aridad del target")
     p_target.add_argument("densidad", type=float, help="Densidad (0-1)")

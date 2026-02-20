@@ -3,6 +3,7 @@
 Tests de modelos NO DEFINIBLES por tipo.
 Targets aleatorios sobre álgebras (típicamente no definibles).
 """
+
 import os
 import tempfile
 import pytest
@@ -36,7 +37,9 @@ class TestNoDefinibleBoole:
             f.flush()
             salida = run_main(f.name, timeout=120)
             os.unlink(f.name)
-        assert _es_no_definible(salida), f"Target aleatorio en Boole debería ser NO DEFINIBLE. Salida: {salida[:500]}"
+        assert _es_no_definible(salida), (
+            f"Target aleatorio en Boole debería ser NO DEFINIBLE. Salida: {salida[:500]}"
+        )
 
 
 class TestNoDefinibleAleatorio:
@@ -53,7 +56,9 @@ class TestNoDefinibleAleatorio:
             salida = run_main(f.name, timeout=120)
             os.unlink(f.name)
         # Debe terminar con resultado (DEFINABLE o NOT DEFINABLE)
-        assert _es_definible(salida) or _es_no_definible(salida), f"Debe dar definible o no. Salida: {salida[:500]}"
+        assert _es_definible(salida) or _es_no_definible(salida), (
+            f"Debe dar definible o no. Salida: {salida[:500]}"
+        )
 
 
 class TestNoDefinibleGrupoAbeliano:
@@ -67,7 +72,9 @@ class TestNoDefinibleGrupoAbeliano:
             f.flush()
             salida = run_main(f.name, timeout=120)
             os.unlink(f.name)
-        assert _es_no_definible(salida), f"Target aleatorio en grupo abeliano NO DEFINIBLE. Salida: {salida[:500]}"
+        assert _es_no_definible(salida), (
+            f"Target aleatorio en grupo abeliano NO DEFINIBLE. Salida: {salida[:500]}"
+        )
 
     def test_grupo_abeliano_diverso_target_aleatorio(self):
         """Grupo abeliano diverso con target aleatorio."""
@@ -77,7 +84,9 @@ class TestNoDefinibleGrupoAbeliano:
             f.flush()
             salida = run_main(f.name, timeout=120)
             os.unlink(f.name)
-        assert _es_no_definible(salida), f"Target aleatorio en grupo diverso NO DEFINIBLE. Salida: {salida[:500]}"
+        assert _es_no_definible(salida), (
+            f"Target aleatorio en grupo diverso NO DEFINIBLE. Salida: {salida[:500]}"
+        )
 
 
 class TestNoDefinibleGrupoNoAbeliano:
@@ -91,7 +100,9 @@ class TestNoDefinibleGrupoNoAbeliano:
             f.flush()
             salida = run_main(f.name, timeout=120)
             os.unlink(f.name)
-        assert _es_no_definible(salida), f"Target aleatorio en grupo no abeliano NO DEFINIBLE. Salida: {salida[:500]}"
+        assert _es_no_definible(salida), (
+            f"Target aleatorio en grupo no abeliano NO DEFINIBLE. Salida: {salida[:500]}"
+        )
 
 
 class TestNoDefinibleReticulado:
@@ -105,7 +116,9 @@ class TestNoDefinibleReticulado:
             f.flush()
             salida = run_main(f.name, timeout=120)
             os.unlink(f.name)
-        assert _es_no_definible(salida), f"Target aleatorio en reticulado NO DEFINIBLE. Salida: {salida[:500]}"
+        assert _es_no_definible(salida), (
+            f"Target aleatorio en reticulado NO DEFINIBLE. Salida: {salida[:500]}"
+        )
 
 
 class TestNoDefinibleModeloExistente:
@@ -117,7 +130,9 @@ class TestNoDefinibleModeloExistente:
         if not model_path.exists():
             pytest.skip("retrombo_nodef.model no existe")
         salida = run_main(str(model_path), timeout=60)
-        assert _es_no_definible(salida), f"retrombo_nodef debe ser NO DEFINIBLE. Salida: {salida[:500]}"
+        assert _es_no_definible(salida), (
+            f"retrombo_nodef debe ser NO DEFINIBLE. Salida: {salida[:500]}"
+        )
 
 
 class TestNoDefinibleTargetSolo:
@@ -125,8 +140,16 @@ class TestNoDefinibleTargetSolo:
 
     def test_target_solo_sin_operaciones(self):
         """Target aleatorio sin álgebra (usa fixture): no hay términos, no definible."""
-        model_path = PROJECT_ROOT / "testing" / "tests_definibilidad" / "fixtures" / "modelo_solo_target.model"
+        model_path = (
+            PROJECT_ROOT
+            / "testing"
+            / "tests_definibilidad"
+            / "fixtures"
+            / "modelo_solo_target.model"
+        )
         if not model_path.exists():
             pytest.skip("Fixture modelo_solo_target no existe")
         salida = run_main(str(model_path), timeout=60)
-        assert _es_no_definible(salida), f"Solo target sin ops debe ser NO DEFINIBLE. Salida: {salida[:500]}"
+        assert _es_no_definible(salida), (
+            f"Solo target sin ops debe ser NO DEFINIBLE. Salida: {salida[:500]}"
+        )

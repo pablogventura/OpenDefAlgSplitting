@@ -22,7 +22,7 @@ def indent(text: Any) -> str:
     """
     text = str(text)
     text = "  " + text.strip("\n")
-    return text.replace('\n', '\n  ') + "\n"
+    return text.replace("\n", "\n  ") + "\n"
 
 
 def comment(text: Any) -> str:
@@ -36,7 +36,7 @@ def comment(text: Any) -> str:
     <BLANKLINE>
     """
     text = "# " + text.strip("\n")
-    return text.replace('\n', '\n# ') + "\n"
+    return text.replace("\n", "\n# ") + "\n"
 
 
 T = TypeVar("T")
@@ -61,11 +61,14 @@ def compose(f: Callable[..., Any], g: Callable[..., Any]) -> Callable[..., Any]:
     >>> compose(lambda x: x+1, lambda x,y: x+y)(5,6)
     12
     """
+
     def composition(*args):
         return f(g(*args))
+
     return composition
 
 
 if __name__ == "__main__":
     import doctest
+
     doctest.testmod()
