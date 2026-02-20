@@ -32,22 +32,26 @@ def _run_generator(script_name, args, capture=True):
     return result.stdout if capture else None
 
 
-def _extract_cardinality(content):
-    """Extrae la cardinalidad del universo de la primera línea del modelo."""
+def _extract_universe(content):
+    """Extrae el universo (lista de elementos) de la primera línea del modelo."""
     lines = content.strip().split("\n")
     for line in lines:
         line_clean = line.split("#")[0].strip()
         if line_clean:
-            return len(line_clean.split())
-    return 8
+            parts = line_clean.split()
+            return [eval(p) for p in parts]
+    return list(range(8))
 
 
 def _add_target(content, arity, density):
-    """Añade un target aleatorio al contenido del modelo."""
-    cardinality = _extract_cardinality(content)
+    """Añade un target aleatorio al contenido del modelo.
+    Usa el universo real del modelo (p. ej. reticulado tiene [0,2,4,5,6,7], no [0..6]).
+    """
+    universe = _extract_universe(content)
+    universe_str = " ".join(str(x) for x in universe)
     result = subprocess.run(
         [sys.executable, str(GENERADORES_DIR / "randomtarget_separado.py"),
-         str(cardinality), str(arity), str(density)],
+         universe_str, str(arity), str(density)],
         capture_output=True, text=True, cwd=str(GENERADORES_DIR)
     )
     if result.returncode != 0:

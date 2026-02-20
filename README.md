@@ -5,7 +5,7 @@ Open Definability checker for finite algebras. Decides whether relations are def
 ## Requirements
 
 - Python 3.7+
-- Dependencies: `termcolor` (install with `pip install termcolor`)
+- Dependencies: `termcolor`, `pytest` (install with `pip install -r requirements.txt`)
 
 ## Usage
 
@@ -241,3 +241,22 @@ T0(x,y,z) -eq(z,y) & -eq(z,x) & -eq(y,x) & eq(y,f0(z, f0(x, y)))
 
 - **`agregaformula.py`** — batch: adds formula-defined targets to gzipped `.modelwt` models (alg_random_wt, boole_wt, grupo_abeliano_diverso_wt). Run from `testing/generadores`.
 - **`formulaaleatoria.py`** — core script for definable targets; used by agregaformula and can be piped directly.
+
+---
+
+## Running tests
+
+To run the definability test suite (parser, definable models, non-definable models, edge cases):
+
+```bash
+pip install -r requirements.txt
+pytest testing/tests_definibilidad/ -v
+```
+
+Or with a virtual environment:
+
+```bash
+python -m venv .venv
+.venv/bin/pip install -r requirements.txt
+.venv/bin/pytest testing/tests_definibilidad/ -v
+```

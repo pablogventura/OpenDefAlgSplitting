@@ -27,7 +27,7 @@ def generador(k, cant_generadores, cardinalidad_exacta=None):
     :param cant_generadores: cantidad de generadores aleatorios
     q para cuando uno quiere que sea clavado un universo y vaya reintentando
     """
-    permutaciones = set(permutations(range(k)))
+    permutaciones = list(permutations(range(k)))
     print("# Cantidad de permutaciones posibles: %s" % len(permutaciones))
     
     sigo=True
@@ -42,7 +42,7 @@ def generador(k, cant_generadores, cardinalidad_exacta=None):
                 universe.add(r)
                 sigo = True
         if (cardinalidad_exacta and (len(universe) > cardinalidad_exacta) or (cardinalidad_exacta and (not sigo and len(universe) < cardinalidad_exacta))):
-            universe = set(sample(permutaciones, cant_generadores))
+            universe = set(sample(permutaciones, min(cant_generadores, len(permutaciones))))
             universe.add(tuple(range(k)))
             sigo = True
     universe = sorted(universe)

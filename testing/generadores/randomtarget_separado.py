@@ -21,16 +21,20 @@ def random_target(universe,tarity,density):
 
 def main():
     try:
-        cardinality,arity, density = sys.argv[1:4]
-        cardinality = int(cardinality)
+        universe_arg, arity, density = sys.argv[1:4]
         arity = int(arity)
         density = float(density)
     except:
-        print("Toma el tamaño del universo, la aridad y la densidad del target aleatorio y lo agrega a un archivo model que este entrando por la stdin")
+        print("Toma el universo (elementos separados por espacio) o cardinalidad, la aridad y la densidad del target aleatorio")
         return
-    print("# Target random arity=%s, density=%s" % (arity,density))
-    universe = list(range(cardinality))
-    random_target(universe,arity,density)
+    # Si el primer arg tiene espacio, es universo explícito (p. ej. "0 2 4 5 6 7"); si no, es cardinalidad
+    if " " in universe_arg:
+        universe = parse_universe(universe_arg)
+    else:
+        cardinality = int(universe_arg)
+        universe = list(range(cardinality))
+    print("# Target random arity=%s, density=%s" % (arity, density))
+    random_target(universe, arity, density)
 
 
 if __name__ == "__main__":
