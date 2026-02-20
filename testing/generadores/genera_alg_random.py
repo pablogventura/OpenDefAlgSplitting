@@ -8,6 +8,7 @@ from random import randint
 
 if "OPENDEFALG_RANDOM_SEED" in os.environ:
     import random
+
     random.seed(int(os.environ["OPENDEFALG_RANDOM_SEED"]))
 
 

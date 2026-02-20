@@ -1,0 +1,16 @@
+[run]
+source = .
+patch = subprocess
+omit =
+    .venv/*
+    venv/*
+    env/*
+    testing/**
+    htmlcov/*
+
+[report]
+omit = testing/**
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise NotImplementedError

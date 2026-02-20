@@ -18,6 +18,7 @@ env/
 testing/generadores/modelos/
 .pytest_cache/
 .coverage
+.coverage.*
 htmlcov/
 *.cover
 

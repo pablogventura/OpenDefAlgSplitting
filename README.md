@@ -21,12 +21,26 @@ Run the analysis:
 ruff check .          # Lint
 ruff format .         # Format code (or --check to only verify)
 pyright               # Type checking
+pytest testing/ --cov=. --cov-report=term-missing   # Tests with coverage
 ```
 
 Or in one go:
 
 ```bash
 ruff check . && ruff format --check . && pyright
+```
+
+Or run all checks (ruff, format, pyright, tests with coverage):
+
+```bash
+./check_all.sh
+```
+
+To generate an HTML coverage report:
+
+```bash
+pytest testing/ --cov=. --cov-report=html
+# Open htmlcov/index.html in a browser
 ```
 
 ## Usage
