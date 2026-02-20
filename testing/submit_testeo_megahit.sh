@@ -14,7 +14,7 @@
 #SBATCH --partition=batch
 
 ### Nombre de la tarea
-#SBATCH --job-name=hit_vs_minion
+#SBATCH --job-name=MegaDef
 
 ### Cantidad de nodos a usar
 #SBATCH --nodes=1
@@ -32,7 +32,10 @@
 #SBATCH --time 2-10:00:00
 
 ### Lanzado de la tarea
-srun python3 tests_megahit.py testing/mega_hit_test/
+source venv/bin/activate
+srun python3 testing/tests_megahit_opendefalg.py
 
 exit 0
+
+
 

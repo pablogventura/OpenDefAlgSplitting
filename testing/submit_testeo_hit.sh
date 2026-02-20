@@ -14,7 +14,7 @@
 #SBATCH --partition=batch
 
 ### Nombre de la tarea
-#SBATCH --job-name=PostaDef
+#SBATCH --job-name=HitDef
 
 #SBATCH --mail-type=BEGIN,END,FAIL         # Mail events (NONE, BEGIN, END, FAIL, ALL)
 #SBATCH --mail-user=pventura@famaf.unc.edu.ar
@@ -36,7 +36,7 @@
 
 ### Lanzado de la tarea
 date
-srun python3 tests_con_timeout.py
+srun python3 testing/tests_con_timeout_400m.py
 date
 exit 0
 
