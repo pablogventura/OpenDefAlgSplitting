@@ -46,3 +46,8 @@ Thumbs.db
 *.log
 *.tmp
 .cache/
+
+# Rust / Cargo
+/target/
+**/*.rs.bk
+*.pdb

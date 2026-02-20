@@ -1,0 +1,12 @@
+[package]
+name = "opendefalgsplitting"
+version = "0.1.0"
+edition = "2021"
+description = "Open Definability checker for finite algebras"
+
+[dependencies]
+colored = "2.1"
+thiserror = "1.0"
+anyhow = "1.0"
+flate2 = "1.0"
+

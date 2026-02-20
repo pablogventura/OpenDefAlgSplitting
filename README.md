@@ -2,6 +2,24 @@
 
 Open Definability checker for finite algebras. Decides whether relations are definable in first-order logic from the operations of the algebra.
 
+## Implementaciones
+
+El proyecto está disponible en **Python** y **Rust**.
+
+### Rust
+
+```bash
+cargo build --release
+./target/release/opendefalgsplitting your_model.model
+```
+
+Ejecutar tests:
+```bash
+cargo test --release --lib
+```
+
+### Python
+
 ## Requirements
 
 - Python 3.7+
