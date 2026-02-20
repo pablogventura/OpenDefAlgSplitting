@@ -30,11 +30,31 @@ Or in one go:
 ruff check . && ruff format --check . && pyright
 ```
 
-Or run all checks (ruff, format, pyright, tests with coverage):
+Or run all checks (ruff, format, radon, pyright, tests with coverage):
 
 ```bash
 ./check_all.sh
 ```
+
+## Code quality analysis
+
+Additional dev dependencies: `radon` (complexity, maintainability) and `pylint` (duplication).
+
+| Tool   | Métrica                | Descripción                                      |
+|--------|------------------------|--------------------------------------------------|
+| Radon  | Cyclomatic Complexity  | Complejidad ciclomática (McCabe) por función     |
+| Radon  | Maintainability Index  | Índice de mantenibilidad (0–100)                 |
+| Radon  | Raw metrics            | SLOC, comentarios, LLOC                          |
+| Ruff   | C901                   | Funciones con complejidad > 40                   |
+| Pylint | R0801                  | Duplicación de código (>3 líneas similares)      |
+
+Run the full quality report:
+
+```bash
+./quality_report.sh
+```
+
+This reports complexity grades (A=1–5 best, F=51+ worst), maintainability (A=20+, B=10–19, C=0–9), and code duplication.
 
 To generate an HTML coverage report:
 

@@ -21,6 +21,11 @@ $PY -m ruff format --check .
 echo "OK"
 
 echo ""
+echo "=== radon (complejidad + mantenibilidad) ==="
+$PY -m radon cc main.py first_order parser misc myunicode.py files.py -n D -a -q 2>/dev/null || true
+$PY -m radon mi main.py first_order parser misc myunicode.py files.py -n C -q 2>/dev/null || true
+
+echo ""
 echo "=== pyright ==="
 $PY -m pyright
 echo "OK"
