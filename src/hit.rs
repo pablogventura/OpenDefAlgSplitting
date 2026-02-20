@@ -4,8 +4,23 @@ use crate::first_order::formulas::{self, Formula, OpSym, Term, Variable};
 use crate::first_order::models::Model;
 use crate::first_order::relops::{Operation, Relation};
 
-const USE_INFORMATION_GAIN: bool = false;
-const IG_SAMPLE: Option<usize> = Some(20);
+/// Configuración del algoritmo: uso de information gain y muestreo de candidatos.
+#[derive(Clone, Copy, Debug)]
+pub struct HitConfig {
+    /// Si true, en cada paso se elige (op, ti) que maximiza information gain.
+    pub use_information_gain: bool,
+    /// Si use_information_gain, número de candidatos a muestrear (None = todos).
+    pub ig_sample: Option<usize>,
+}
+
+impl Default for HitConfig {
+    fn default() -> Self {
+        Self {
+            use_information_gain: false,
+            ig_sample: Some(20),
+        }
+    }
+}
 
 fn entropy(in_count: i64, out_count: i64) -> f64 {
     let n = in_count + out_count;
@@ -361,6 +376,7 @@ pub struct Block {
     pub formula: Formula,
     arity: usize,
     generator: IndicesTupleGenerator,
+    config: HitConfig,
 }
 
 impl Block {
@@ -369,6 +385,7 @@ impl Block {
         tuples: Vec<TupleHistory>,
         targets: Vec<Relation>,
         formula: Formula,
+        config: HitConfig,
     ) -> Self {
         let arity = targets[0].arity;
         let viejos = vec![];
@@ -381,6 +398,7 @@ impl Block {
             formula,
             arity,
             generator,
+            config,
         }
     }
 
@@ -397,11 +415,11 @@ impl Block {
     }
 
     pub fn step(&mut self) -> Result<Vec<Block>, Counterexample> {
-        let (op, ti) = if USE_INFORMATION_GAIN {
+        let (op, ti) = if self.config.use_information_gain {
             let cand_list = self.generator.enumerate_candidates();
             let cand_list: Vec<_> = cand_list
                 .into_iter()
-                .take(IG_SAMPLE.unwrap_or(usize::MAX))
+                .take(self.config.ig_sample.unwrap_or(usize::MAX))
                 .collect();
             if cand_list.is_empty() {
                 self.generator.finished = true;
@@ -482,6 +500,7 @@ impl Block {
                     formula: f,
                     arity: self.arity,
                     generator: generators[i].clone(),
+                    config: self.config,
                 });
             }
             i += 1;
@@ -495,6 +514,7 @@ impl Block {
                 formula: f,
                 arity: self.arity,
                 generator: generators[i].clone(),
+                config: self.config,
             });
         }
         Ok(blocks)
@@ -520,7 +540,11 @@ fn cartesian_product_sized<T: Clone>(items: &[T], n: usize) -> Vec<Vec<T>> {
     result
 }
 
-pub fn is_open_def(model: &Model, targets: Vec<Relation>) -> Result<Formula, Counterexample> {
+pub fn is_open_def(
+    model: &Model,
+    targets: Vec<Relation>,
+    config: HitConfig,
+) -> Result<Formula, Counterexample> {
     let arity = targets[0].arity;
     let universe = &model.universe;
     let targets_ref: Vec<&Relation> = targets.iter().collect();
@@ -541,7 +565,7 @@ pub fn is_open_def(model: &Model, targets: Vec<Relation>) -> Result<Formula, Cou
         .as_ref()
         .unwrap()
         .preprocessed_formula();
-    let mut start_block = Block::new(operations, tuples, targets, formula);
+    let mut start_block = Block::new(operations, tuples, targets, formula, config);
     is_open_def_iterative(&mut start_block)
 }
 
@@ -746,7 +770,7 @@ mod tests {
         let targets = vec![target];
         let th = TupleHistory::new(vec![0, 0], &[&targets[0]]);
         let f = targets[0].pattern.as_ref().unwrap().preprocessed_formula();
-        let block = Block::new(ops, vec![th], targets, f);
+        let block = Block::new(ops, vec![th], targets, f, HitConfig::default());
         assert!(block.is_all_in_targets());
     }
 
@@ -756,7 +780,7 @@ mod tests {
         let targets = vec![target.clone()];
         let th = TupleHistory::new(vec![0, 0], &[&target]);
         let f = target.pattern.as_ref().unwrap().preprocessed_formula();
-        let block = Block::new(BTreeMap::new(), vec![th], targets, f);
+        let block = Block::new(BTreeMap::new(), vec![th], targets, f, HitConfig::default());
         assert!(block.is_disjunt_to_targets());
     }
 

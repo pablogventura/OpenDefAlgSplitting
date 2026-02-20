@@ -6,13 +6,18 @@ use std::time::Instant;
 use colored::Colorize;
 use opendefalgsplitting::{
     first_order::formulas,
-    hit::{is_open_def, Counterexample},
+    hit::{is_open_def, HitConfig, Counterexample},
     parse_model,
 };
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    let path = args.get(1).map(|s| Path::new(s));
+    if args.iter().any(|a| a == "--help" || a == "-h") {
+        print_help();
+        return;
+    }
+    let (path_opt, hit_config) = parse_args(&args);
+    let path = path_opt.as_deref().map(Path::new);
 
     let mut model = match parse_model(path, true) {
         Ok(m) => m,
@@ -60,7 +65,7 @@ fn main() {
         targets_rels.sort_by(|a, b| a.sym.cmp(&b.sym));
 
         for target in targets_rels {
-            match is_open_def(&model, vec![target.clone()]) {
+            match is_open_def(&model, vec![target.clone()], hit_config) {
                 Ok(f) => {
                     println!("\t{} is definable", target.sym.green());
                     println!("by {}", f);
@@ -107,4 +112,74 @@ fn main() {
             println!("Target len:    {}", target_set.len());
         }
     }
+}
+
+fn print_help() {
+    let name = env::args().next().unwrap_or_else(|| "opendefalgsplitting".into());
+    let name = name.as_str();
+    eprintln!(
+        "Uso: {} [OPCIONES] [ARCHIVO.model]
+
+Decide si las relaciones objetivo (T...) son definibles en lógica de primer orden
+a partir de las operaciones del modelo. Si no se pasa ARCHIVO, lee el modelo por stdin.
+
+Opciones:
+  -h, --help              Muestra esta ayuda
+  -i, --information-gain  Elige cada paso maximizando information gain (más lento, a veces menos pasos)
+  --ig-sample N           Con -i, candidatos a muestrear; 0 = sin límite (por defecto: 20)
+
+Ejemplos:
+  {} modelo.model
+  {} modelo.model --information-gain --ig-sample 30
+  {} -i modelo.model
+",
+        name, name, name, name
+    );
+}
+
+/// Parsea argumentos: primer argumento posicional = path del modelo;
+/// --information-gain / -i activa information gain; --ig-sample N fija el muestreo.
+fn parse_args(args: &[String]) -> (Option<String>, HitConfig) {
+    let mut path = None;
+    let mut use_ig = false;
+    let mut ig_sample = HitConfig::default().ig_sample;
+    let mut i = 1;
+    while i < args.len() {
+        if args[i] == "--" {
+            i += 1;
+            if i < args.len() && path.is_none() {
+                path = Some(args[i].clone());
+            }
+            i += 1;
+            continue;
+        }
+        if args[i] == "--information-gain" || args[i] == "-i" {
+            use_ig = true;
+            i += 1;
+            continue;
+        }
+        if args[i] == "--ig-sample" {
+            i += 1;
+            if i < args.len() {
+                if let Ok(n) = args[i].parse::<usize>() {
+                    ig_sample = if n == 0 { None } else { Some(n) };
+                }
+            }
+            i += 1;
+            continue;
+        }
+        if args[i].starts_with('-') {
+            i += 1;
+            continue;
+        }
+        if path.is_none() {
+            path = Some(args[i].clone());
+        }
+        i += 1;
+    }
+    let config = HitConfig {
+        use_information_gain: use_ig,
+        ig_sample,
+    };
+    (path, config)
 }

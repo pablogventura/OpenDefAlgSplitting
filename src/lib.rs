@@ -6,7 +6,7 @@ pub mod hit;
 pub use first_order::{formulas, models, relops};
 pub use parser::{parse_model, ParserError};
 pub use preprocessing::{preprocesamiento2, Pattern};
-pub use hit::{is_open_def, Counterexample};
+pub use hit::{is_open_def, Counterexample, HitConfig};
 
 #[cfg(test)]
 mod tests {
@@ -28,7 +28,7 @@ mod tests {
         }
         for (_, targets) in targets_by_arity {
             for target in targets {
-                match is_open_def(&model, vec![target]) {
+                match is_open_def(&model, vec![target], HitConfig::default()) {
                     Ok(_) => {}
                     Err(ce) => return Err(ce),
                 }

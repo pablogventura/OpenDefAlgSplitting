@@ -18,6 +18,18 @@ Ejecutar tests:
 cargo test --release --lib
 ```
 
+**Information gain:** el algoritmo puede elegir el paso (op, ti) maximizando information gain en lugar del orden fijo del generador. Por defecto está desactivado. Opciones del binario:
+
+- `--information-gain` o `-i` — activa information gain.
+- `--ig-sample N` — número de candidatos a muestrear (por defecto 20 cuando IG está activo).
+
+Ejemplo:
+```bash
+./target/release/opendefalgsplitting modelo.model --information-gain --ig-sample 30
+# o forma corta:
+./target/release/opendefalgsplitting -i modelo.model --ig-sample 30
+```
+
 ### Python
 
 ## Requirements
