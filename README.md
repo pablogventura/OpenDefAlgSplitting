@@ -32,6 +32,13 @@ Ejemplo:
 
 **Paralelización (rayon):** se aprovechan varios núcleos en (1) comprobación de cada relación objetivo en paralelo, (2) cálculo de information gain por candidatos y por tuplas, y (3) exploración en paralelo de las ramas del árbol cuando hay varios hijos.
 
+**Benchmark (medir tiempos):** para comparar antes/después de mejoras (p. ej. ver [docs/CUDA.md](docs/CUDA.md)):
+```bash
+./target/release/opendefalgsplitting --bench model_examples/modeloqueanda.model model_examples/suma4.model
+./target/release/opendefalgsplitting --bench --repeat 5 -i model_examples/gigante.model
+```
+Salida: tabla `model`, `ms` (o media ± desv. si `--repeat > 1`), `result`.
+
 ### Python
 
 ## Requirements

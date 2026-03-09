@@ -11,15 +11,52 @@ use opendefalgsplitting::{
     parse_model,
 };
 
+/// Resultado de ejecutar el checker sobre un modelo (para benchmarks).
+pub enum BenchResult {
+    Definable,
+    NotDefinable,
+}
+
+/// Ejecuta el checker sobre un modelo ya cargado; devuelve DEFINABLE o el primer contraejemplo. No imprime nada.
+fn run_checker(
+    model: &opendefalgsplitting::first_order::models::Model,
+    targets_by_arity: &HashMap<usize, Vec<opendefalgsplitting::first_order::relops::Relation>>,
+    hit_config: HitConfig,
+) -> Result<BenchResult, Counterexample> {
+    let mut arities: Vec<_> = targets_by_arity.keys().cloned().collect();
+    arities.sort();
+    for &arity in &arities {
+        let targets_rels = targets_by_arity.get(&arity).unwrap();
+        if targets_rels.is_empty() {
+            continue;
+        }
+        let results: Vec<_> = targets_rels
+            .par_iter()
+            .map(|target| is_open_def(model, vec![target.clone()], hit_config))
+            .collect();
+        for res in results {
+            if let Err(ce) = res {
+                return Err(ce);
+            }
+        }
+    }
+    Ok(BenchResult::Definable)
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.iter().any(|a| a == "--help" || a == "-h") {
         print_help();
         return;
     }
-    let (path_opt, hit_config) = parse_args(&args);
-    let path = path_opt.as_deref().map(Path::new);
+    let (bench_mode, paths, repeat, hit_config) = parse_args(&args);
 
+    if bench_mode {
+        run_bench_mode(&paths, repeat, hit_config);
+        return;
+    }
+
+    let path = paths.first().map(|s| Path::new(s.as_str()));
     let mut model = match parse_model(path, true) {
         Ok(m) => m,
         Err(e) => {
@@ -128,6 +165,73 @@ fn main() {
     }
 }
 
+fn run_bench_mode(paths: &[String], repeat: u32, hit_config: HitConfig) {
+    println!("model\tms\tresult");
+    if paths.is_empty() {
+        eprintln!("--bench requiere al menos un archivo .model");
+        std::process::exit(1);
+    }
+    for path in paths {
+        let path = Path::new(path);
+        let mut times_ms: Vec<f64> = Vec::with_capacity(repeat as usize);
+        let mut result_str = String::new();
+        for _ in 0..repeat {
+            let (model, targets_by_arity) = match load_model_and_targets(path) {
+                Ok(x) => x,
+                Err(e) => {
+                    eprintln!("{}: {}", path.display(), e);
+                    result_str = format!("error: {}", e);
+                    break;
+                }
+            };
+            let start = Instant::now();
+            match run_checker(&model, &targets_by_arity, hit_config) {
+                Ok(BenchResult::Definable) => result_str = "DEFINABLE".to_string(),
+                Ok(BenchResult::NotDefinable) => result_str = "NOT_DEFINABLE".to_string(),
+                Err(_) => result_str = "NOT_DEFINABLE".to_string(),
+            }
+            times_ms.push(start.elapsed().as_secs_f64() * 1000.0);
+        }
+        if times_ms.is_empty() {
+            println!("{}\t-\t{}", path.display(), result_str);
+        } else if times_ms.len() == 1 {
+            println!("{}\t{:.2}\t{}", path.display(), times_ms[0], result_str);
+        } else {
+            let mean = times_ms.iter().sum::<f64>() / times_ms.len() as f64;
+            let variance = times_ms.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / times_ms.len() as f64;
+            let std = variance.sqrt();
+            println!("{}\t{:.2} ± {:.2}\t{}\t(n={})", path.display(), mean, std, result_str, times_ms.len());
+        }
+    }
+}
+
+fn load_model_and_targets(
+    path: &Path,
+) -> Result<
+    (
+        opendefalgsplitting::first_order::models::Model,
+        HashMap<usize, Vec<opendefalgsplitting::first_order::relops::Relation>>,
+    ),
+    String,
+> {
+    let model = parse_model(Some(path), true).map_err(|e| e.to_string())?;
+    let target_syms: Vec<String> = model
+        .relations
+        .keys()
+        .filter(|s| s.starts_with('T'))
+        .cloned()
+        .collect();
+    if target_syms.is_empty() {
+        return Err("NO TARGET RELATIONS".to_string());
+    }
+    let mut targets_by_arity: HashMap<usize, Vec<_>> = HashMap::new();
+    for sym in &target_syms {
+        let rel = model.relations.get(sym).cloned().unwrap();
+        targets_by_arity.entry(rel.arity).or_default().push(rel);
+    }
+    Ok((model, targets_by_arity))
+}
+
 fn print_help() {
     let name = env::args().next().unwrap_or_else(|| "opendefalgsplitting".into());
     let name = name.as_str();
@@ -141,28 +245,49 @@ Opciones:
   -h, --help              Muestra esta ayuda
   -i, --information-gain  Elige cada paso maximizando information gain (más lento, a veces menos pasos)
   --ig-sample N           Con -i, candidatos a muestrear; 0 = sin límite (por defecto: 20)
+  --bench [MODELOS...]     Modo benchmark: mide tiempo por modelo (varios archivos). Ver abajo.
+  --repeat N              Con --bench, ejecuta cada modelo N veces y muestra media ± desv. (por defecto: 1)
 
 Ejemplos:
   {} modelo.model
   {} modelo.model --information-gain --ig-sample 30
   {} -i modelo.model
+  {} --bench modelo1.model modelo2.model
+  {} --bench --repeat 3 -i model_examples/gigante.model
 ",
-        name, name, name, name
+        name, name, name, name, name, name
     );
 }
 
-/// Parsea argumentos: primer argumento posicional = path del modelo;
-/// --information-gain / -i activa information gain; --ig-sample N fija el muestreo.
-fn parse_args(args: &[String]) -> (Option<String>, HitConfig) {
-    let mut path = None;
+/// Parsea argumentos. Devuelve (bench_mode, paths, repeat, hit_config).
+/// Con --bench, paths son todos los argumentos posicionales; si no, paths tiene 0 o 1 elemento.
+fn parse_args(args: &[String]) -> (bool, Vec<String>, u32, HitConfig) {
+    let mut bench_mode = false;
+    let mut paths = Vec::new();
+    let mut repeat = 1u32;
     let mut use_ig = false;
     let mut ig_sample = HitConfig::default().ig_sample;
     let mut i = 1;
     while i < args.len() {
         if args[i] == "--" {
             i += 1;
-            if i < args.len() && path.is_none() {
-                path = Some(args[i].clone());
+            if i < args.len() {
+                paths.push(args[i].clone());
+            }
+            i += 1;
+            continue;
+        }
+        if args[i] == "--bench" {
+            bench_mode = true;
+            i += 1;
+            continue;
+        }
+        if args[i] == "--repeat" {
+            i += 1;
+            if i < args.len() {
+                if let Ok(n) = args[i].parse::<u32>() {
+                    repeat = n.max(1);
+                }
             }
             i += 1;
             continue;
@@ -186,14 +311,15 @@ fn parse_args(args: &[String]) -> (Option<String>, HitConfig) {
             i += 1;
             continue;
         }
-        if path.is_none() {
-            path = Some(args[i].clone());
-        }
+        paths.push(args[i].clone());
         i += 1;
+    }
+    if !bench_mode && paths.len() > 1 {
+        paths.truncate(1);
     }
     let config = HitConfig {
         use_information_gain: use_ig,
         ig_sample,
     };
-    (path, config)
+    (bench_mode, paths, repeat, config)
 }
