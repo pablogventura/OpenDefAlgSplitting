@@ -32,6 +32,8 @@ Ejemplo:
 
 **Paralelización (rayon):** se aprovechan varios núcleos en (1) comprobación de cada relación objetivo en paralelo, (2) cálculo de information gain por candidatos y por tuplas, y (3) exploración en paralelo de las ramas del árbol cuando hay varios hijos.
 
+**CUDA (opcional):** con `cargo build --release --features cuda` el cálculo de information gain (con `-i`) puede ejecutarse en GPU cuando todos los candidatos son operaciones binarias. Si no hay GPU o falla, se usa la ruta CPU. Ver [docs/CUDA.md](docs/CUDA.md).
+
 **Benchmark (medir tiempos):** para comparar antes/después de mejoras (p. ej. ver [docs/CUDA.md](docs/CUDA.md)):
 ```bash
 ./target/release/opendefalgsplitting --bench model_examples/modeloqueanda.model model_examples/suma4.model

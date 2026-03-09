@@ -35,7 +35,7 @@ fn entropy(in_count: i64, out_count: i64) -> f64 {
     h(p) + h(q)
 }
 
-fn information_gain_from_counts(
+pub(crate) fn information_gain_from_counts(
     n: usize,
     in_total: usize,
     partition_counts: &HashMap<(usize, bool), (usize, usize)>,
@@ -430,7 +430,19 @@ impl Block {
             let tuples_clone = self.tuples.clone();
             let n = tuples_clone.len();
             let in_total = tuples_clone.iter().filter(|th| th.in_target).count();
-            let best = cand_list
+
+            #[allow(unused_assignments)]
+            let mut best = None;
+            #[cfg(feature = "cuda")]
+            {
+                if let Some(((op_c, ti_c), _ig)) =
+                    crate::hit_cuda::best_candidate_ig_cuda(&tuples_clone, &cand_list, n, in_total)
+                {
+                    best = Some((0.0f64, op_c, ti_c));
+                }
+            }
+            if best.is_none() {
+                best = cand_list
                 .par_iter()
                 .map(|(op, ti)| {
                     let part: HashMap<(usize, bool), (usize, usize)> = tuples_clone
@@ -458,6 +470,7 @@ impl Block {
                     (ig, op.clone(), ti.clone())
                 })
                 .max_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+            }
             match best {
                 Some((_ig, op, ti)) => {
                     self.generator.set_last_term(&op, &ti);

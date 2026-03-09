@@ -1,5 +1,15 @@
 # Uso de CUDA en OpenDefAlgSplitting
 
+## Implementación actual
+
+- **Feature `cuda`**: compila con `cargo build --release --features cuda`. Requiere CUDA 12.0 (o cambia en `Cargo.toml` la feature `cuda-12000` por la versión que tengas, p. ej. `cuda-11080`).
+- **Information gain en GPU**: cuando usas `-i` (o `--information-gain`), el cálculo del mejor candidato (op, ti) por information gain se intenta hacer en GPU si:
+  - hay una GPU NVIDIA disponible,
+  - todos los candidatos del paso son **operaciones binarias** (arity 2),
+  - y los datos caben en i32 (universo no gigante).
+  Si no se cumple, se usa la ruta CPU (rayon) automáticamente.
+- **Varios targets**: la comprobación de cada relación objetivo (T…) sigue en paralelo por **CPU** con rayon en `main`; no se usa GPU para eso.
+
 ## ¿Dónde podría ayudar CUDA?
 
 El algoritmo tiene varios bloques de trabajo:

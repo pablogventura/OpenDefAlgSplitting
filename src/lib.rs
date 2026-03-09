@@ -3,6 +3,9 @@ pub mod parser;
 pub mod preprocessing;
 pub mod hit;
 
+#[cfg(feature = "cuda")]
+pub mod hit_cuda;
+
 pub use first_order::{formulas, models, relops};
 pub use parser::{parse_model, ParserError};
 pub use preprocessing::{preprocesamiento2, Pattern};
