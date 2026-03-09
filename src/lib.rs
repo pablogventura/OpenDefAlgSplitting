@@ -18,12 +18,25 @@ mod tests {
     use std::path::Path;
 
     fn check_model(model_path: &Path) -> Result<bool, hit::Counterexample> {
+        check_model_with_config(model_path, HitConfig::default())
+    }
+
+    fn check_model_with_config(
+        model_path: &Path,
+        config: HitConfig,
+    ) -> Result<bool, hit::Counterexample> {
         let model = parse_model(Some(model_path), true).map_err(|_| hit::Counterexample(vec![]))?;
-        let target_syms: Vec<String> = model.relations.keys().filter(|s| s.starts_with('T')).cloned().collect();
+        let target_syms: Vec<String> = model
+            .relations
+            .keys()
+            .filter(|s| s.starts_with('T'))
+            .cloned()
+            .collect();
         if target_syms.is_empty() {
             return Ok(true);
         }
-        let mut targets_by_arity: std::collections::HashMap<usize, Vec<_>> = std::collections::HashMap::new();
+        let mut targets_by_arity: std::collections::HashMap<usize, Vec<_>> =
+            std::collections::HashMap::new();
         let mut model = model;
         for sym in &target_syms {
             let rel = model.relations.remove(sym).unwrap();
@@ -31,7 +44,7 @@ mod tests {
         }
         for (_, targets) in targets_by_arity {
             for target in targets {
-                match is_open_def(&model, vec![target], HitConfig::default()) {
+                match is_open_def(&model, vec![target], config) {
                     Ok(_) => {}
                     Err(ce) => return Err(ce),
                 }
@@ -109,6 +122,56 @@ mod tests {
         match check_model(&model_path) {
             Ok(_) => panic!("Solo target sin operaciones debe ser NOT DEFINABLE"),
             Err(_) => {}
+        }
+    }
+
+    /// Mismo modelo debe dar el mismo resultado con y sin IG, y con distintos ig_sample.
+    #[test]
+    fn test_definability_unchanged_by_ig_sample() {
+        let project_root = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let definable = project_root
+            .join("model_examples")
+            .join("modeloqueanda.model");
+        let not_definable = project_root.join("model_examples").join("suma4.model");
+        if !definable.exists() || !not_definable.exists() {
+            return;
+        }
+        let configs = [
+            HitConfig::default(),
+            HitConfig {
+                use_information_gain: true,
+                ig_sample: Some(1),
+            },
+            HitConfig {
+                use_information_gain: true,
+                ig_sample: Some(3),
+            },
+            HitConfig {
+                use_information_gain: true,
+                ig_sample: Some(5),
+            },
+            HitConfig {
+                use_information_gain: true,
+                ig_sample: Some(20),
+            },
+        ];
+        for config in &configs {
+            match check_model_with_config(&definable, *config) {
+                Ok(_) => {}
+                Err(_) => panic!(
+                    "modeloqueanda debe ser DEFINABLE con ig_sample={:?}",
+                    config.ig_sample
+                ),
+            }
+        }
+        for config in &configs {
+            match check_model_with_config(&not_definable, *config) {
+                Ok(_) => panic!(
+                    "suma4 debe ser NOT DEFINABLE con ig_sample={:?}",
+                    config.ig_sample
+                ),
+                Err(_) => {}
+            }
         }
     }
 }

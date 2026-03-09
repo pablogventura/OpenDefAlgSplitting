@@ -210,3 +210,64 @@ fn test_equivalence_suma4() {
         "Rust y Python deben coincidir en suma4 (NOT DEFINABLE)"
     );
 }
+
+/// Ejecuta el binario con los argumentos dados y devuelve stdout+stderr.
+fn run_rust_main_with_args(args: &[&str]) -> String {
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_opendefalgsplitting"));
+    for a in args {
+        cmd.arg(a);
+    }
+    let output = cmd.output().expect("Failed to run binary");
+    String::from_utf8_lossy(&output.stdout).into_owned()
+        + &String::from_utf8_lossy(&output.stderr)
+}
+
+/// Con --bench -i --ig-sample N el resultado (DEFINABLE / NOT_DEFINABLE) debe ser el mismo que sin IG.
+#[test]
+fn test_bench_ig_sample_5_modeloqueanda_definable() {
+    let project_root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let model_path = project_root
+        .join("model_examples")
+        .join("modeloqueanda.model");
+    if !model_path.exists() {
+        return;
+    }
+    let out = run_rust_main_with_args(&[
+        "--bench",
+        "-i",
+        "--ig-sample",
+        "5",
+        model_path.to_str().unwrap(),
+    ]);
+    assert!(
+        out.contains("DEFINABLE"),
+        "modeloqueanda con -i --ig-sample 5 debe ser DEFINABLE. Salida: {}",
+        &out[..out.len().min(400)]
+    );
+    assert!(
+        !out.contains("NOT_DEFINABLE"),
+        "modeloqueanda con -i --ig-sample 5 no debe dar NOT_DEFINABLE. Salida: {}",
+        &out[..out.len().min(400)]
+    );
+}
+
+#[test]
+fn test_bench_ig_sample_5_suma4_not_definable() {
+    let project_root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let model_path = project_root.join("model_examples").join("suma4.model");
+    if !model_path.exists() {
+        return;
+    }
+    let out = run_rust_main_with_args(&[
+        "--bench",
+        "-i",
+        "--ig-sample",
+        "5",
+        model_path.to_str().unwrap(),
+    ]);
+    assert!(
+        out.contains("NOT_DEFINABLE"),
+        "suma4 con -i --ig-sample 5 debe ser NOT_DEFINABLE. Salida: {}",
+        &out[..out.len().min(400)]
+    );
+}

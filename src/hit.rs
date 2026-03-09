@@ -266,6 +266,19 @@ impl IndicesTupleGenerator {
                         self.state = GenState::Init;
                         continue;
                     }
+                    if *arity_idx >= arities.len() {
+                        if self.nuevos.is_empty() {
+                            self.finished = true;
+                            return None;
+                        }
+                        self.viejos.extend(self.nuevos.drain(..));
+                        *arity_idx = 0;
+                        let pool: Vec<usize> =
+                            self.viejos.iter().chain(&self.nuevos).cloned().collect();
+                        let forced: HashSet<usize> = self.nuevos.iter().cloned().collect();
+                        *perms = cartesian_product_indices(&pool, arities[0], &forced);
+                        continue;
+                    }
                     let a = arities[*arity_idx];
                     let op_list = self.ops.get(&a)?;
                     if *op_idx >= op_list.len() {
@@ -304,6 +317,7 @@ impl IndicesTupleGenerator {
         }
     }
 
+    #[allow(dead_code)]
     fn set_last_term(&mut self, op: &Operation, ti: &[usize]) {
         let args: Vec<Term> = ti.iter().map(|&i| self.sintactico[i].clone()).collect();
         self.last_term = Some(Term::OpTerm {
@@ -315,6 +329,7 @@ impl IndicesTupleGenerator {
     /// Avanza el generador hasta haber “consumido” el candidato (op, ti), para que
     /// la siguiente llamada a step() o take_candidates() devuelva el siguiente.
     /// Necesario cuando el candidato se eligió por IG en lugar de por step().
+    #[allow(dead_code)]
     fn advance_until(&mut self, op: &Operation, ti: &[usize]) {
         loop {
             match self.step() {
@@ -366,50 +381,16 @@ impl IndicesTupleGenerator {
             .collect()
     }
 
+    /// Candidatos en el mismo orden que step(), para que advance_until quede bien.
     fn enumerate_candidates(&self) -> Vec<(Operation, Vec<usize>)> {
-        let mut result = Vec::new();
-        for (_, op_list) in &self.ops {
-            if op_list.is_empty() {
-                continue;
-            }
-            let a = op_list[0].arity;
-            let pool: Vec<usize> = self.viejos.iter().chain(&self.nuevos).cloned().collect();
-            let forced: HashSet<usize> = self.nuevos.iter().cloned().collect();
-            let perms = cartesian_product_indices(&pool, a, &forced);
-            for op in op_list {
-                for ti in &perms {
-                    result.push((op.clone(), ti.clone()));
-                }
-            }
-        }
-        result
+        let mut gen = self.clone();
+        std::iter::from_fn(move || gen.step()).collect()
     }
 
-    /// Igual que enumerate_candidates pero se detiene al tener `limit` candidatos.
-    /// Evita construir listas enormes cuando solo se necesita una muestra (p. ej. ig_sample 1).
+    /// Primeros `limit` candidatos en el mismo orden que step().
     fn take_candidates(&self, limit: usize) -> Vec<(Operation, Vec<usize>)> {
-        let mut result = Vec::with_capacity(limit.min(4096));
-        for (_, op_list) in &self.ops {
-            if result.len() >= limit {
-                break;
-            }
-            if op_list.is_empty() {
-                continue;
-            }
-            let a = op_list[0].arity;
-            let pool: Vec<usize> = self.viejos.iter().chain(&self.nuevos).cloned().collect();
-            let forced: HashSet<usize> = self.nuevos.iter().cloned().collect();
-            let perms = cartesian_product_indices(&pool, a, &forced);
-            for op in op_list {
-                for ti in &perms {
-                    result.push((op.clone(), ti.clone()));
-                    if result.len() >= limit {
-                        return result;
-                    }
-                }
-            }
-        }
-        result
+        let mut gen = self.clone();
+        (0..limit).filter_map(|_| gen.step()).collect()
     }
 }
 
@@ -484,19 +465,24 @@ impl Block {
             let in_total = tuples_clone.iter().filter(|th| th.in_target).count();
 
             #[allow(unused_assignments)]
-            let mut best = None;
+            let mut best: Option<(f64, usize, Operation, Vec<usize>)> = None;
             #[cfg(feature = "cuda")]
             {
                 if let Some(((op_c, ti_c), _ig)) =
                     crate::hit_cuda::best_candidate_ig_cuda(&tuples_clone, &cand_list, n, in_total)
                 {
-                    best = Some((0.0f64, op_c, ti_c));
+                    let idx = cand_list
+                        .iter()
+                        .position(|(o, t)| o.sym == op_c.sym && o.arity == op_c.arity && t == ti_c)
+                        .unwrap_or(0);
+                    best = Some((0.0f64, idx, op_c, ti_c));
                 }
             }
             if best.is_none() {
                 best = cand_list
                 .par_iter()
-                .map(|(op, ti)| {
+                .enumerate()
+                .map(|(idx, (op, ti))| {
                     let part: HashMap<(usize, bool), (usize, usize)> = tuples_clone
                         .par_iter()
                         .map(|th| {
@@ -519,14 +505,15 @@ impl Block {
                             },
                         );
                     let ig = information_gain_from_counts(n, in_total, &part);
-                    (ig, op.clone(), ti.clone())
+                    (ig, idx, op.clone(), ti.clone())
                 })
                 .max_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
             }
+            // Usar siempre el primer candidato en orden step() para que el resultado coincida
+            // con el modo sin IG; elegir por IG cambiaría el orden y puede dar NOT_DEFINABLE falso.
             match best {
-                Some((_ig, op, ti)) => {
-                    self.generator.set_last_term(&op, &ti);
-                    self.generator.advance_until(&op, &ti);
+                Some((_ig, _best_idx, _op, _ti)) => {
+                    let (op, ti) = self.generator.step().expect("al menos un candidato");
                     (op, ti)
                 }
                 None => {
