@@ -312,6 +312,22 @@ impl IndicesTupleGenerator {
         });
     }
 
+    /// Avanza el generador hasta haber “consumido” el candidato (op, ti), para que
+    /// la siguiente llamada a step() o take_candidates() devuelva el siguiente.
+    /// Necesario cuando el candidato se eligió por IG en lugar de por step().
+    fn advance_until(&mut self, op: &Operation, ti: &[usize]) {
+        loop {
+            match self.step() {
+                None => return,
+                Some((o, t)) => {
+                    if o.sym == op.sym && o.arity == op.arity && t == ti {
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
     fn formula_diferenciadora(&mut self, index: usize) -> Formula {
         let term = self.last_term.as_ref().unwrap().clone();
         formulas::eq(term, self.sintactico[index].clone())
@@ -445,6 +461,16 @@ impl Block {
 
     pub fn step(&mut self) -> Result<Vec<Block>, Counterexample> {
         let (op, ti) = if self.config.use_information_gain {
+            // Con un solo candidato usamos step() para mantener el mismo orden que sin IG y no colgar.
+            if self.config.ig_sample == Some(1) {
+                match self.generator.step() {
+                    Some(x) => x,
+                    None => {
+                        self.generator.finished = true;
+                        return Ok(vec![self.clone()]);
+                    }
+                }
+            } else {
             let cand_list = match self.config.ig_sample {
                 Some(n) => self.generator.take_candidates(n),
                 None => self.generator.enumerate_candidates(),
@@ -500,12 +526,14 @@ impl Block {
             match best {
                 Some((_ig, op, ti)) => {
                     self.generator.set_last_term(&op, &ti);
+                    self.generator.advance_until(&op, &ti);
                     (op, ti)
                 }
                 None => {
                     self.generator.finished = true;
                     return Ok(vec![self.clone()]);
                 }
+            }
             }
         } else {
             match self.generator.step() {
