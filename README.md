@@ -8,10 +8,15 @@ El proyecto está disponible en **Python** y **Rust**.
 
 ### Rust
 
+**Compilar (o usar Make):**
 ```bash
 cargo build --release
+# o
+make          # mismo que make release
 ./target/release/opendefalgsplitting your_model.model
 ```
+
+**Make:** `make` (release), `make test`, `make clean`, `make cuda`, `make windows`, `make linux-static`. Ver `make help`.
 
 Ejecutar tests:
 ```bash
@@ -40,6 +45,22 @@ Ejemplo:
 ./target/release/opendefalgsplitting --bench --repeat 5 -i model_examples/gigante.model
 ```
 Salida: tabla `model`, `ms` (o media ± desv. si `--repeat > 1`), `result`.
+
+**Compilar para Windows (desde Linux):** instala el target y mingw, luego:
+```bash
+rustup target add x86_64-pc-windows-gnu
+# Debian/Ubuntu: sudo apt install mingw-w64
+make windows
+# → target/x86_64-pc-windows-gnu/release/opendefalgsplitting.exe
+```
+El `.exe` generado con el target **gnu** suele ser autocontenido (no requiere instalar nada en Windows).
+
+**Compartir el binario:** el binario de `cargo build --release` en Linux enlaza con la glibc del sistema; en otra máquina Linux moderna suele funcionar sin instalar nada. Para **máxima portabilidad** (p. ej. distribuir un solo ejecutable sin dependencias de glibc):
+```bash
+make linux-static   # requiere: rustup target add x86_64-unknown-linux-musl, musl-tools
+# → target/x86_64-unknown-linux-musl/release/opendefalgsplitting
+```
+Ese binario es estático y se puede copiar a cualquier x86_64 Linux.
 
 ### Python
 

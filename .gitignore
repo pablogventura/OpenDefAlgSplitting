@@ -51,3 +51,14 @@ Thumbs.db
 /target/
 **/*.rs.bk
 *.pdb
+*.dSYM/
+
+# Cargo credentials (claves de registro)
+.cargo/credentials
+
+# Cursor / IDE extra
+.cursor/
+
+# Merge y backups de editor
+*.orig
+*~
