@@ -368,6 +368,33 @@ impl IndicesTupleGenerator {
         }
         result
     }
+
+    /// Igual que enumerate_candidates pero se detiene al tener `limit` candidatos.
+    /// Evita construir listas enormes cuando solo se necesita una muestra (p. ej. ig_sample 1).
+    fn take_candidates(&self, limit: usize) -> Vec<(Operation, Vec<usize>)> {
+        let mut result = Vec::with_capacity(limit.min(4096));
+        for (_, op_list) in &self.ops {
+            if result.len() >= limit {
+                break;
+            }
+            if op_list.is_empty() {
+                continue;
+            }
+            let a = op_list[0].arity;
+            let pool: Vec<usize> = self.viejos.iter().chain(&self.nuevos).cloned().collect();
+            let forced: HashSet<usize> = self.nuevos.iter().cloned().collect();
+            let perms = cartesian_product_indices(&pool, a, &forced);
+            for op in op_list {
+                for ti in &perms {
+                    result.push((op.clone(), ti.clone()));
+                    if result.len() >= limit {
+                        return result;
+                    }
+                }
+            }
+        }
+        result
+    }
 }
 
 #[derive(Clone)]
@@ -418,11 +445,10 @@ impl Block {
 
     pub fn step(&mut self) -> Result<Vec<Block>, Counterexample> {
         let (op, ti) = if self.config.use_information_gain {
-            let cand_list = self.generator.enumerate_candidates();
-            let cand_list: Vec<_> = cand_list
-                .into_iter()
-                .take(self.config.ig_sample.unwrap_or(usize::MAX))
-                .collect();
+            let cand_list = match self.config.ig_sample {
+                Some(n) => self.generator.take_candidates(n),
+                None => self.generator.enumerate_candidates(),
+            };
             if cand_list.is_empty() {
                 self.generator.finished = true;
                 return Ok(vec![self.clone()]);
