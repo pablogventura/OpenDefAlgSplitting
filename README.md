@@ -55,6 +55,16 @@ make windows
 ```
 El `.exe` generado con el target **gnu** suele ser autocontenido (no requiere instalar nada en Windows).
 
+**Compilar en Windows (en una PC con Windows):** instala Rust con [rustup](https://rustup.rs/) (rustup-init.exe), abre una terminal (PowerShell o CMD) en la raíz del proyecto y ejecuta:
+```cmd
+cargo build --release
+```
+O bien: `build.bat` (hace lo mismo). El ejecutable queda en `target\release\opendefalgsplitting.exe`. Para ejecutarlo:
+```cmd
+target\release\opendefalgsplitting.exe tu_modelo.model
+```
+Tests: `cargo test`. Con CUDA: `cargo build --release --features cuda` (necesitas drivers y toolkit CUDA en Windows).
+
 **Compartir el binario:** el binario de `cargo build --release` en Linux enlaza con la glibc del sistema; en otra máquina Linux moderna suele funcionar sin instalar nada. Para **máxima portabilidad** (p. ej. distribuir un solo ejecutable sin dependencias de glibc):
 ```bash
 make linux-static   # requiere: rustup target add x86_64-unknown-linux-musl, musl-tools
