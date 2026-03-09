@@ -18,7 +18,7 @@ make          # mismo que make release
 
 **Make:** `make` (release), `make test`, `make clean`, `make cuda`, `make windows`, `make linux-static`. Ver `make help`.
 
-**Binarios por CI (GitHub Actions):** al hacer push de un tag (p. ej. `git tag v1.0.0 && git push origin v1.0.0`) se compila el proyecto en Linux y Windows. En **Actions** → run del tag → **Artifacts** se pueden descargar `opendefalgsplitting-linux-x86_64`, `opendefalgsplitting-linux-x86_64-musl` (estático) y `opendefalgsplitting-windows-x86_64` (.exe).
+**Binarios por CI (GitHub Actions):** al hacer push de un tag (p. ej. `git tag v1.0.0 && git push origin v1.0.0`) se compila el proyecto y se publica un **Release** en la pestaña **Releases** del repo con los binarios adjuntos: Linux (glibc), Linux estático (musl) y Windows (.exe). También siguen disponibles como Artifacts en el run de Actions.
 
 Ejecutar tests:
 ```bash
