@@ -1,0 +1,72 @@
+# Compila el binario para Linux y Windows y publica artefactos descargables.
+name: Build
+
+on:
+  push:
+    tags:
+      - '*'   # cualquier tag (p. ej. v1.0.0)
+
+jobs:
+  build-linux:
+    name: Linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-action@stable
+        with:
+          toolchain: stable
+
+      - name: Build (release)
+        run: cargo build --release
+
+      - name: Upload Linux binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: opendefalgsplitting-linux-x86_64
+          path: target/release/opendefalgsplitting
+
+  build-linux-static:
+    name: Linux (estático, musl)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-action@stable
+        with:
+          toolchain: stable
+          targets: x86_64-unknown-linux-musl
+
+      - name: Install musl
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+
+      - name: Build (release, estático)
+        run: cargo build --release --target x86_64-unknown-linux-musl
+
+      - name: Upload Linux static binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: opendefalgsplitting-linux-x86_64-musl
+          path: target/x86_64-unknown-linux-musl/release/opendefalgsplitting
+
+  build-windows:
+    name: Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-action@stable
+        with:
+          toolchain: stable
+
+      - name: Build (release)
+        run: cargo build --release
+
+      - name: Upload Windows binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: opendefalgsplitting-windows-x86_64
+          path: target/release/opendefalgsplitting.exe
