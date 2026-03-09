@@ -9,4 +9,5 @@ colored = "2.1"
 thiserror = "1.0"
 anyhow = "1.0"
 flate2 = "1.0"
+rayon = "=1.9.0"
 

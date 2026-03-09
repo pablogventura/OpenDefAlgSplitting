@@ -4,6 +4,7 @@ use std::path::Path;
 use std::time::Instant;
 
 use colored::Colorize;
+use rayon::prelude::*;
 use opendefalgsplitting::{
     first_order::formulas,
     hit::{is_open_def, HitConfig, Counterexample},
@@ -56,16 +57,29 @@ fn main() {
     let mut arities: Vec<_> = targets_by_arity.keys().cloned().collect();
     arities.sort();
 
-    for arity in arities {
+    for &arity in &arities {
         let targets_rels = targets_by_arity.get_mut(&arity).unwrap();
         if targets_rels.is_empty() {
             continue;
         }
-        let _target_rel = targets_rels.first().unwrap().clone();
         targets_rels.sort_by(|a, b| a.sym.cmp(&b.sym));
+    }
 
-        for target in targets_rels {
-            match is_open_def(&model, vec![target.clone()], hit_config) {
+    for arity in arities {
+        let targets_rels = targets_by_arity.get(&arity).unwrap();
+        if targets_rels.is_empty() {
+            continue;
+        }
+        let results: Vec<_> = targets_rels
+            .par_iter()
+            .map(|target| {
+                let res = is_open_def(&model, vec![target.clone()], hit_config);
+                (target, res)
+            })
+            .collect();
+
+        for (target, res) in results {
+            match res {
                 Ok(f) => {
                     println!("\t{} is definable", target.sym.green());
                     println!("by {}", f);

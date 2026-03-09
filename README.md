@@ -30,6 +30,8 @@ Ejemplo:
 ./target/release/opendefalgsplitting -i modelo.model --ig-sample 30
 ```
 
+**Paralelización (rayon):** se aprovechan varios núcleos en (1) comprobación de cada relación objetivo en paralelo, (2) cálculo de information gain por candidatos y por tuplas, y (3) exploración en paralelo de las ramas del árbol cuando hay varios hijos.
+
 ### Python
 
 ## Requirements

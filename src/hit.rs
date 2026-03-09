@@ -1,5 +1,7 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 
+use rayon::prelude::*;
+
 use crate::first_order::formulas::{self, Formula, OpSym, Term, Variable};
 use crate::first_order::models::Model;
 use crate::first_order::relops::{Operation, Relation};
@@ -51,7 +53,7 @@ fn information_gain_from_counts(
     h_before - h_after
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Counterexample(pub Vec<Vec<i64>>);
 
 fn cartesian_product_indices(pool: &[usize], n: usize, forced: &HashSet<usize>) -> Vec<Vec<usize>> {
@@ -425,29 +427,39 @@ impl Block {
                 self.generator.finished = true;
                 return Ok(vec![self.clone()]);
             }
-            let n = self.tuples.len();
-            let in_total = self.tuples.iter().filter(|th| th.in_target).count();
-            let mut best_ig = -1.0f64;
-            let mut best = None;
-            for (op, ti) in cand_list {
-                let mut part: HashMap<(usize, bool), (usize, usize)> = HashMap::new();
-                for th in &self.tuples {
-                    let (idx, _) = th.simulate_step(&op, &ti);
-                    let entry = part.entry((idx, th.in_target)).or_insert((0, 0));
-                    if th.in_target {
-                        entry.0 += 1;
-                    } else {
-                        entry.1 += 1;
-                    }
-                }
-                let ig = information_gain_from_counts(n, in_total, &part);
-                if ig > best_ig {
-                    best_ig = ig;
-                    best = Some((op, ti));
-                }
-            }
+            let tuples_clone = self.tuples.clone();
+            let n = tuples_clone.len();
+            let in_total = tuples_clone.iter().filter(|th| th.in_target).count();
+            let best = cand_list
+                .par_iter()
+                .map(|(op, ti)| {
+                    let part: HashMap<(usize, bool), (usize, usize)> = tuples_clone
+                        .par_iter()
+                        .map(|th| {
+                            let (idx, _) = th.simulate_step(op, ti);
+                            let key = (idx, th.in_target);
+                            let val = if th.in_target { (1, 0) } else { (0, 1) };
+                            let mut m = HashMap::new();
+                            m.insert(key, val);
+                            m
+                        })
+                        .reduce(
+                            || HashMap::new(),
+                            |mut a, b| {
+                                for (k, v) in b {
+                                    let e = a.entry(k).or_insert((0, 0));
+                                    e.0 += v.0;
+                                    e.1 += v.1;
+                                }
+                                a
+                            },
+                        );
+                    let ig = information_gain_from_counts(n, in_total, &part);
+                    (ig, op.clone(), ti.clone())
+                })
+                .max_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
             match best {
-                Some((op, ti)) => {
+                Some((_ig, op, ti)) => {
                     self.generator.set_last_term(&op, &ti);
                     (op, ti)
                 }
@@ -565,10 +577,54 @@ pub fn is_open_def(
         .as_ref()
         .unwrap()
         .preprocessed_formula();
-    let mut start_block = Block::new(operations, tuples, targets, formula, config);
-    is_open_def_iterative(&mut start_block)
+    let start_block = Block::new(operations, tuples, targets, formula, config);
+    is_open_def_parallel_recursive(start_block)
 }
 
+/// Explora el árbol de bloques en paralelo cuando hay varios hijos; con un solo hijo
+/// sigue en bucle para evitar desbordamiento de pila en cadenas largas.
+fn is_open_def_parallel_recursive(mut block: Block) -> Result<Formula, Counterexample> {
+    loop {
+        if block.is_all_in_targets() {
+            return Ok(block.formula);
+        }
+        if block.is_disjunt_to_targets() {
+            return Ok(formulas::false_formula(None));
+        }
+        if block.finished() {
+            return Err(Counterexample(
+                block.tuples.iter().map(|th| th.t.clone()).collect(),
+            ));
+        }
+        match block.step() {
+            Err(ce) => return Err(ce),
+            Ok(children) => {
+                if children.len() == 1 {
+                    block = children.into_iter().next().unwrap();
+                    continue;
+                }
+                let results: Vec<_> = children
+                    .into_par_iter()
+                    .map(is_open_def_parallel_recursive)
+                    .collect();
+                if let Some(ce) = results.iter().find_map(|r| r.as_ref().err()) {
+                    return Err(ce.clone());
+                }
+                let formulas: Vec<Formula> = results
+                    .into_iter()
+                    .map(|r| r.unwrap())
+                    .collect();
+                let mut combined = formulas::false_formula(None);
+                for f in formulas {
+                    combined = combined.or_formula(&f);
+                }
+                return Ok(combined);
+            }
+        }
+    }
+}
+
+#[allow(dead_code)]
 fn is_open_def_iterative(block: &mut Block) -> Result<Formula, Counterexample> {
     #[derive(Clone)]
     enum StackItem {
