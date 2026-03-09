@@ -83,16 +83,19 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: opendefalgsplitting-linux-x86_64
+          path: opendefalgsplitting-linux-x86_64
 
       - name: Download Linux static binary
         uses: actions/download-artifact@v4
         with:
           name: opendefalgsplitting-linux-x86_64-musl
+          path: opendefalgsplitting-linux-x86_64-musl
 
       - name: Download Windows binary
         uses: actions/download-artifact@v4
         with:
           name: opendefalgsplitting-windows-x86_64
+          path: opendefalgsplitting-windows-x86_64
 
       - name: Rename and prepare release assets
         run: |
