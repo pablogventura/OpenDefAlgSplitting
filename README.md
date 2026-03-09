@@ -1,392 +1,249 @@
 # OpenDefAlgSplitting
 
-Open Definability checker for finite algebras. Decides whether relations are definable in first-order logic from the operations of the algebra.
+Open definability checker for finite algebras. It decides whether relations are definable in first-order logic from the operations of the algebra.
 
-## Implementaciones
+**This repository (default branch) contains the Rust implementation.** The original **Python** implementation is on the **[python](https://github.com/pablogventura/OpenDefAlgSplitting/tree/python)** branch.
 
-El proyecto está disponible en **Python** y **Rust**.
+---
 
-### Rust
+## Table of contents
 
-**Compilar (o usar Make):**
+- [Quick start](#quick-start)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Command-line options](#command-line-options)
+- [Model file format](#model-file-format)
+- [Building from source](#building-from-source)
+- [Releases and pre-built binaries](#releases-and-pre-built-binaries)
+- [Tests](#tests)
+- [Optional features](#optional-features)
+- [Python version](#python-version)
+
+---
+
+## Quick start
+
+1. Get a pre-built binary from [Releases](https://github.com/pablogventura/OpenDefAlgSplitting/releases), or build from source (see [Installation](#installation)).
+2. Run the checker on a model file:
+   ```bash
+   ./opendefalgsplitting your_model.model
+   ```
+   On Windows: `opendefalgsplitting.exe your_model.model`
+3. The program prints **DEFINABLE** or **NOT DEFINABLE** (and a counterexample when not definable). All relations whose names start with `T` in the model are checked.
+
+---
+
+## Installation
+
+### Option A: Download a release
+
+Go to [Releases](https://github.com/pablogventura/OpenDefAlgSplitting/releases), pick a version, and download the asset for your platform:
+
+- **Linux (glibc):** `opendefalgsplitting-<version>-linux-x86_64`
+- **Linux (static, portable):** `opendefalgsplitting-<version>-linux-x86_64-musl`
+- **Windows:** `opendefalgsplitting-<version>-windows-x86_64.exe`
+
+Make the Linux binary executable: `chmod +x opendefalgsplitting-*-linux-x86_64`.
+
+### Option B: Build from source
+
+You need [Rust](https://rustup.rs/) (install via `rustup`).
+
 ```bash
-cargo build --release
-# o
-make          # mismo que make release
-./target/release/opendefalgsplitting your_model.model
-```
-
-**Make:** `make` (release), `make test`, `make clean`, `make cuda`, `make windows`, `make linux-static`. Ver `make help`.
-
-**Binarios por CI (GitHub Actions):** al hacer push de un tag (p. ej. `git tag v1.0.0 && git push origin v1.0.0`) se compila el proyecto y se publica un **Release** en la pestaña **Releases** del repo con los binarios adjuntos: Linux (glibc), Linux estático (musl) y Windows (.exe). También siguen disponibles como Artifacts en el run de Actions.
-
-Ejecutar tests:
-```bash
-cargo test --release --lib
-```
-
-**Information gain:** el algoritmo puede elegir el paso (op, ti) maximizando information gain en lugar del orden fijo del generador. Por defecto está desactivado. Opciones del binario:
-
-- `--information-gain` o `-i` — activa information gain.
-- `--ig-sample N` — número de candidatos a muestrear (por defecto 20 cuando IG está activo).
-
-Ejemplo:
-```bash
-./target/release/opendefalgsplitting modelo.model --information-gain --ig-sample 30
-# o forma corta:
-./target/release/opendefalgsplitting -i modelo.model --ig-sample 30
-```
-
-**Paralelización (rayon):** se aprovechan varios núcleos en (1) comprobación de cada relación objetivo en paralelo, (2) cálculo de information gain por candidatos y por tuplas, y (3) exploración en paralelo de las ramas del árbol cuando hay varios hijos.
-
-**CUDA (opcional):** con `cargo build --release --features cuda` el cálculo de information gain (con `-i`) puede ejecutarse en GPU cuando todos los candidatos son operaciones binarias. Si no hay GPU o falla, se usa la ruta CPU. Ver [docs/CUDA.md](docs/CUDA.md).
-
-**Benchmark (medir tiempos):** para comparar antes/después de mejoras (p. ej. ver [docs/CUDA.md](docs/CUDA.md)):
-```bash
-./target/release/opendefalgsplitting --bench model_examples/modeloqueanda.model model_examples/suma4.model
-./target/release/opendefalgsplitting --bench --repeat 5 -i model_examples/gigante.model
-```
-Salida: tabla `model`, `ms` (o media ± desv. si `--repeat > 1`), `result`.
-
-**Compilar para Windows (desde Linux):** instala el target y mingw, luego:
-```bash
-rustup target add x86_64-pc-windows-gnu
-# Debian/Ubuntu: sudo apt install mingw-w64
-make windows
-# → target/x86_64-pc-windows-gnu/release/opendefalgsplitting.exe
-```
-El `.exe` generado con el target **gnu** suele ser autocontenido (no requiere instalar nada en Windows).
-
-**Compilar en Windows (en una PC con Windows):** instala Rust con [rustup](https://rustup.rs/) (rustup-init.exe), abre una terminal (PowerShell o CMD) en la raíz del proyecto y ejecuta:
-```cmd
+git clone https://github.com/pablogventura/OpenDefAlgSplitting.git
+cd OpenDefAlgSplitting
 cargo build --release
 ```
-O bien: `build.bat` (hace lo mismo). El ejecutable queda en `target\release\opendefalgsplitting.exe`. Para ejecutarlo:
-```cmd
-target\release\opendefalgsplitting.exe tu_modelo.model
-```
-Tests: `cargo test`. Con CUDA: `cargo build --release --features cuda` (necesitas drivers y toolkit CUDA en Windows).
 
-**Compartir el binario:** el binario de `cargo build --release` en Linux enlaza con la glibc del sistema; en otra máquina Linux moderna suele funcionar sin instalar nada. Para **máxima portabilidad** (p. ej. distribuir un solo ejecutable sin dependencias de glibc):
-```bash
-make linux-static   # requiere: rustup target add x86_64-unknown-linux-musl, musl-tools
-# → target/x86_64-unknown-linux-musl/release/opendefalgsplitting
-```
-Ese binario es estático y se puede copiar a cualquier x86_64 Linux.
+The executable is `target/release/opendefalgsplitting` (Linux/macOS) or `target\release\opendefalgsplitting.exe` (Windows). See [Building from source](#building-from-source) for cross-compilation and optional features.
 
-### Python
-
-## Requirements
-
-- Python 3.7+
-- Dependencies: `termcolor`, `pytest` (install with `pip install -r requirements.txt`)
-
-## Static analysis and formatting
-
-Development dependencies include Ruff (linter + formatter) and Pyright (type checker):
-
-```bash
-pip install -r requirements-dev.txt
-```
-
-Run the analysis:
-
-```bash
-ruff check .          # Lint
-ruff format .         # Format code (or --check to only verify)
-pyright               # Type checking
-pytest testing/ --cov=. --cov-report=term-missing --durations=15   # Tests with coverage and timing
-```
-
-Or in one go:
-
-```bash
-ruff check . && ruff format --check . && pyright
-```
-
-Or run all checks (ruff, format, radon, pyright, tests with coverage):
-
-```bash
-./check_all.sh
-```
-
-## Code quality analysis
-
-Additional dev dependencies: `radon` (complexity, maintainability) and `pylint` (duplication).
-
-| Tool   | Métrica                | Descripción                                      |
-|--------|------------------------|--------------------------------------------------|
-| Radon  | Cyclomatic Complexity  | Complejidad ciclomática (McCabe) por función     |
-| Radon  | Maintainability Index  | Índice de mantenibilidad (0–100)                 |
-| Radon  | Raw metrics            | SLOC, comentarios, LLOC                          |
-| Ruff   | C901                   | Funciones con complejidad > 40                   |
-| Pylint | R0801                  | Duplicación de código (>3 líneas similares)      |
-
-Run the full quality report:
-
-```bash
-./quality_report.sh
-```
-
-This reports complexity grades (A=1–5 best, F=51+ worst), maintainability (A=20+, B=10–19, C=0–9), and code duplication.
-
-To generate an HTML coverage report:
-
-```bash
-pytest testing/ --cov=. --cov-report=html
-# Open htmlcov/index.html in a browser
-```
+---
 
 ## Usage
 
-To run a definability check:
-
 ```bash
-python3 main.py your_model.model
+opendefalgsplitting [OPTIONS] [MODEL_FILE]
 ```
 
-Where `your_model.model` is a file containing your algebra. All relations whose names start with "T" are checked by Open Definability.
+- **MODEL_FILE:** path to a model file (see [Model file format](#model-file-format)). If omitted, the program reads the model from stdin.
+- **OPTIONS:** see [Command-line options](#command-line-options).
 
-The output will be the answer to definability and, if not definable, the counterexample.
+**Examples:**
 
-## Format of model files
+```bash
+./opendefalgsplitting model_examples/modeloqueanda.model
+./opendefalgsplitting -i --ig-sample 20 model_examples/gigante.model
+./opendefalgsplitting --bench --repeat 5 model_examples/modeloqueanda.model
+```
 
-Line comments must start with "#". Empty lines are ignored. Example:
+Output: for each target relation (names starting with `T`), the program prints whether it is definable and, if not, a counterexample.
 
-```# This file contains the evil model```
+---
 
-The first line should contain each element of universe separated by a space. Example:
+## Command-line options
 
-```0 1 2```
+| Option | Short | Description |
+|--------|--------|-------------|
+| `--help` | `-h` | Print help and exit. |
+| `--information-gain` | `-i` | **Experimental, not recommended.** Enable information-gain-based candidate sampling (see [Optional features](#optional-features)). |
+| `--ig-sample N` | | When `-i` is set, sample up to N candidates per step (default: 20). Use a large value or omit for no limit. |
+| `--bench` | | Benchmark mode: run the checker on the given model(s) and print timing (and result). |
+| `--repeat N` | | In `--bench` mode, run N times and print mean ± std deviation. |
 
-A relation should start with a declaration line with the name, number of tuples and arity separated by one space. Next lines should be one for each tuple in the relation containing the relation tuple separated by a space. Example:
+**Examples:**
 
+```bash
+./opendefalgsplitting -h
+./opendefalgsplitting -i modelo.model --ig-sample 30
+./opendefalgsplitting --bench model_examples/modeloqueanda.model model_examples/suma4.model
+./opendefalgsplitting --bench --repeat 5 -i model_examples/gigante.model
+```
+
+---
+
+## Model file format
+
+- **Comments:** lines starting with `#` are ignored. Empty lines are ignored.
+- **Universe:** first non-comment line is a space-separated list of elements (e.g. `0 1 2`).
+- **Relations:** declaration line `NAME N_TUPLES ARITY`, then one line per tuple (space-separated). Relations whose name starts with `T` are treated as **targets** and checked for definability.
+- **Operations:** declaration line `NAME ARITY`, then one line per entry in the graph of the operation (inputs and output, space-separated). For a binary op, each line is `a b result`.
+- **Constants:** declaration line `NAME 0`, then one line with the element.
+
+**Example (relation):**
 ```
 E 2 3
 0 1 2
 2 1 0
 ```
 
-An operation should start with a declaration line with the name and arity separated by one space. Next lines should be one for each tuple in the relation containing a tuple for the graph relation of the operation separated by a space. Example:
-
+**Example (binary operation):**
 ```
 + 2
 0 0 0
 0 1 1
-0 2 2
 1 0 1
-1 1 2
-1 2 0
-2 0 2
-2 1 0
-2 2 1
+1 1 0
 ```
 
-A constant should start with a declaration line with the name and 0 (will be a 0-arity operation) separated by one space. Next line should be the element. Example:
-
-```
-Zero 0
-0
-```
-
-## Generating model examples
-
-Use the unified interface to generate example models:
-
-```bash
-cd testing/generadores
-python3 genera_modelos.py --help
-```
-
-Models must include a target relation (name starting with "T") for definability checking.
-
-**Important:** The `--target` option adds a *random* target. Random targets are typically **not definable** (the algorithm will find a counterexample). To test **definable** cases, see [Generating definable targets](#generating-definable-targets) below.
-
-### Global options
-
-- **`-o ARCHIVO`**: save output to file (default: stdout)
-- **`--target ARIDAD DENSIDAD`**: add random target relation T0 (arity and density between 0 and 1)
-
-### Model types (detailed)
-
-#### `boole` — Boolean algebra
-
-Complete Boolean algebra with 2^n elements. The universe is {0, 1, …, 2^n − 1} with meet (∧) and join (∨) as binary operations. Every finite Boolean algebra is isomorphic to a power set algebra; this generates the algebra on 2^n elements.
-
-**Parameters:**
-- `n` (int): exponent such that the algebra has 2^n elements
-
-**Operations:** `m` (meet, binary), `j` (join, binary)
-
-**Example:** `genera_modelos.py boole 3 -o boole8.model` → Boolean algebra with 8 elements
-
----
-
-#### `aleatorio` — Random algebra
-
-Algebra with arbitrary operations whose outputs are chosen uniformly at random. Useful for stress testing or exploring “generic” structures without algebraic laws.
-
-**Parameters:**
-- `cardinalidad` (int): size of the universe
-- `--subs` (int, default 0): number of subuniverses (for advanced use)
-- `--tam-subs` (int, default 0): size of subuniverses
-- `--aridades` (list, default [2]): arities of operations, e.g. `2 2` for two binary operations (f0, f1)
-
-**Operations:** f0, f1, … for each arity in the list
-
-**Example:** `genera_modelos.py aleatorio 7 --aridades 2 2 --target 2 0.1 -o random.model`
-
----
-
-#### `grupo-abeliano` — Abelian group (product of cyclic groups)
-
-Finite abelian group as a direct product of cyclic groups Z_{n₁} × Z_{n₂} × ⋯. Every finite abelian group is isomorphic to such a product.
-
-**Parameters:**
-- `ordenes` (list of ints): orders of the cyclic factors, e.g. `2 2 2` for Z₂×Z₂×Z₂
-
-**Operations:** `Sum` (binary), `Neg` (unary), `Zero` (constant)
-
-**Example:** `genera_modelos.py grupo-abeliano 2 2 2 --target 2 0.5 -o z2z2z2.model` → Z₂×Z₂×Z₂ (8 elements)
-
----
-
-#### `grupo-abeliano-diverso` — Diverse abelian group
-
-Abelian group of size 2^k, built by randomly decomposing k as a sum of positive integers and taking the product of cyclic groups of those sizes. Produces more varied structures than a fixed decomposition.
-
-**Parameters:**
-- `k` (int): size of the group is 2^k
-
-**Operations:** `Sum` (binary), `Neg` (unary), `Zero` (constant)
-
-**Example:** `genera_modelos.py grupo-abeliano-diverso 4 --target 2 0.3 -o grupo16.model`
-
----
-
-#### `grupo-no-abeliano` — Non-abelian group (permutation group)
-
-Subgroup of the symmetric group S_k on k symbols. The universe is a subset of all k-permutations, closed under composition and inverse. Includes non-abelian groups and symmetric groups.
-
-**Parameters:**
-- `k` (int): works in S_k (k-permutations)
-- `generadores` (int): number of random generators to start with
-- `--cardinalidad-exacta` (int, optional): desired subgroup size; the generator retries until this size is reached
-
-**Operations:** `Id` (identity, constant), `O` (composition, binary), `I` (inverse, unary)
-
-**Example:** `genera_modelos.py grupo-no-abeliano 3 2 --target 2 0.2 -o s3.model`
-
----
-
-#### `reticulado` — Distributive lattice
-
-Distributive lattice as a sublattice of a Boolean algebra. Takes a random subset of a Boolean algebra and closes it under meet and join. Every finite distributive lattice embeds into a Boolean algebra.
-
-**Parameters:**
-- `ancho` (int): ambient Boolean algebra has 2^ancho elements
-- `muestra` (int): number of random elements used to generate the sublattice
-
-**Operations:** `m` (meet, binary), `j` (join, binary)
-
-**Example:** `genera_modelos.py reticulado 3 5 --target 2 0.2 -o ret.model`
-
----
-
-#### `target` — Target relation only (no algebra)
-
-Generates only a random target relation T0 over a universe of given size. No operations. Useful for testing or combining with hand-written algebras.
-
-**Parameters:**
-- `cardinalidad` (int): universe size
-- `aridad` (int): arity of the target relation
-- `densidad` (float, 0–1): fraction of possible tuples that belong to T0
-
-**Example:** `genera_modelos.py target 10 2 0.3 -o solo_target.model`
-
----
-
-## Generating definable targets
-
-Targets added with `--target` are random and usually **not definable**. To generate targets that *are* definable (for testing definable cases or difficult definable examples), use **`formulaaleatoria.py`**.
-
-This script takes a model on stdin, appends a target T0 defined by a random first-order formula built from the algebra's operations, and prints the complete model. The formula is guaranteed to define T0, so the algorithm must "rediscover" it—deeper formulas yield harder instances.
-
-**Usage:**
-```bash
-cd testing/generadores
-python3 genera_alg_random.py 8 0 0 "[2]" | python3 formulaaleatoria.py 2 '{"f0":2}' > definible.model
-```
-
-**Parameters:**
-- `formulaaleatoria.py ARIDAD SIM` — arity of T0 and symbol dictionary (operation names → arity; must match the model)
-- Symbol dicts by algebra type (the value is the **arity** of each operation; if wrong, the parser raises "Arity not correct"):
-  - **aleatorio** (one binary f0): `'{"f0":2}'`
-  - **aleatorio** (f0, f1 both binary): `'{"f0":2,"f1":2}'`
-  - **boole**: `'{"m":2,"j":2}'`
-  - **grupo-abeliano-diverso**: `'{"Sum":2,"Neg":1,"Zero":0}'`
-
-**Examples:**
-```bash
-# Definable target on random algebra (f0 binary)
-python3 genera_alg_random.py 10 0 0 "[2]" | python3 formulaaleatoria.py 2 '{"f0":2}' > def_aleatorio.model
-
-# Definable target on Boolean algebra
-python3 genera_boole.py 3 | python3 formulaaleatoria.py 2 '{"m":2,"j":2}' > def_boole.model
-
-# Definable target on abelian group
-python3 genera_grupo_abeliano_diverso.py 4 | python3 formulaaleatoria.py 2 '{"Sum":2,"Neg":1,"Zero":0}' > def_grupo.model
-```
-
-The formula depth and number of subformulas are fixed in `formulaaleatoria.py` (default: depth 3, 2 subformulas). Editing these values yields harder definable instances.
-
-**Difficult definable example** (larger universe, two operations, arity 3):
-```bash
-python3 genera_alg_random.py 12 0 0 "[2,2]" | python3 formulaaleatoria.py 3 '{"f0":2,"f1":2}' > modelo_dificil_definible.model
-```
-
----
-
-## Defining relations by formula in model files
-
-The parser supports declaring a relation T by a formula instead of listing tuples. Format:
+**Defining a target by formula:** you can declare a target relation by a first-order formula instead of listing tuples. Syntax:
 
 ```
 T0(x,y,z) eq(term1,term2) | -eq(term3,term4) & ...
 ```
 
-- Variables: `x`, `y`, `z`, etc.
-- Use `eq(a,b)` for equality (not `==`).
-- Use operations from the algebra as function symbols (e.g. `m`, `j` for meet/join; `f0`, `f1` for aleatorio).
-- Connect with `&`, `|`, `-` for conjunction, disjunction, negation.
+Use `eq(a,b)` for equality; use algebra operations as function symbols; connect with `&`, `|`, `-` (and, or, not). Example: `T0(x,y) eq(x,y)` defines the diagonal.
 
-Example (see `model_examples/modeloqueanda.model`):
-```
-T0(x,y,z) -eq(z,y) & -eq(z,x) & -eq(y,x) & eq(y,f0(z, f0(x, y)))
-```
+See `model_examples/` in the repository for full examples.
 
 ---
 
-## Other generators and batch processing
+## Building from source
 
-- **`agregaformula.py`** — batch: adds formula-defined targets to gzipped `.modelwt` models (alg_random_wt, boole_wt, grupo_abeliano_diverso_wt). Run from `testing/generadores`.
-- **`formulaaleatoria.py`** — core script for definable targets; used by agregaformula and can be piped directly.
+### Linux / macOS
+
+```bash
+cargo build --release
+# Binary: target/release/opendefalgsplitting
+```
+
+**Using Make (if available):**
+
+```bash
+make          # same as make release
+make test     # run tests
+make clean    # remove target/
+make help     # list all targets
+```
+
+**Static Linux binary (max portability, no glibc dependency):**
+
+```bash
+rustup target add x86_64-unknown-linux-musl
+# On Debian/Ubuntu: sudo apt install musl-tools
+cargo build --release --target x86_64-unknown-linux-musl
+# Binary: target/x86_64-unknown-linux-musl/release/opendefalgsplitting
+```
+
+Or: `make linux-static` (after installing the musl target and musl-tools).
+
+### Windows (native)
+
+1. Install [Rust](https://rustup.rs/) (run `rustup-init.exe`).
+2. In a terminal (PowerShell or CMD) at the project root:
+   ```cmd
+   cargo build --release
+   ```
+   Or run `build.bat`. The executable is `target\release\opendefalgsplitting.exe`.
+
+### Cross-compile to Windows from Linux
+
+```bash
+rustup target add x86_64-pc-windows-gnu
+# Debian/Ubuntu: sudo apt install mingw-w64
+cargo build --release --target x86_64-pc-windows-gnu
+# Binary: target/x86_64-pc-windows-gnu/release/opendefalgsplitting.exe
+```
+
+Or: `make windows`.
 
 ---
 
-## Running tests
+## Releases and pre-built binaries
 
-To run the definability test suite (parser, definable models, non-definable models, edge cases):
+When a [tag](https://github.com/pablogventura/OpenDefAlgSplitting/tags) is pushed (e.g. `v1.0.0`), GitHub Actions build the project and attach the binaries to a **Release**. You can download them from the [Releases](https://github.com/pablogventura/OpenDefAlgSplitting/releases) page. The same run also publishes the build outputs as **Artifacts** in the Actions tab.
 
-```bash
-pip install -r requirements.txt
-pytest testing/tests_definibilidad/ -v
-```
+---
 
-Or with a virtual environment:
+## Tests
 
 ```bash
-python -m venv .venv
-.venv/bin/pip install -r requirements.txt
-.venv/bin/pytest testing/tests_definibilidad/ -v
+cargo test
 ```
+
+Runs unit and integration tests (parser, algorithm, definable/non-definable model checks). For integration tests that run the built binary: `cargo test` from the repo root (they use the debug binary by default).
+
+---
+
+## Optional features
+
+### Information gain (`-i`, `--ig-sample`) — *experimental, not recommended*
+
+This feature is **experimental** and **not recommended** for normal use. The algorithm can use information gain to rank candidates; by default it uses a fixed generator order so that results are deterministic and correct. The options `--information-gain` / `-i` and `--ig-sample N` enable and tune sampling (e.g. for benchmarking or future heuristics). The current implementation keeps the same exploration order as without `-i`, so the result does not change. Prefer running without `-i` unless you have a specific reason (e.g. benchmarking).
+
+### CUDA (GPU)
+
+If you build with the `cuda` feature, the information-gain computation (when using `-i`) can run on the GPU when all candidates are binary operations. If no GPU is available or the data does not qualify, the CPU path is used.
+
+```bash
+cargo build --release --features cuda
+```
+
+Requires NVIDIA drivers and CUDA toolkit. See [docs/CUDA.md](docs/CUDA.md) for details.
+
+### Benchmarking (`--bench`, `--repeat`)
+
+To measure runtimes:
+
+```bash
+./opendefalgsplitting --bench model_examples/modeloqueanda.model
+./opendefalgsplitting --bench --repeat 5 -i model_examples/gigante.model
+```
+
+Output: table with `model`, `ms` (or mean ± std if `--repeat > 1`), and `result` (DEFINABLE / NOT_DEFINABLE).
+
+### Parallelism
+
+The Rust implementation uses [rayon](https://github.com/rayon-rs/rayon) to parallelize: (1) checking multiple target relations, (2) information-gain computation over candidates and tuples, and (3) exploring multiple branches of the algorithm tree when there are several children.
+
+---
+
+## Python version
+
+The original implementation and the full Python documentation (model generators, quality tools, test suite) live on the **[python](https://github.com/pablogventura/OpenDefAlgSplitting/tree/python)** branch. That branch includes:
+
+- Python 3.7+ and dependencies (`termcolor`, `pytest`)
+- Model generators (Boolean, random, abelian groups, lattices, etc.) and definable-target generation
+- Static analysis (Ruff, Pyright), formatting, and code quality scripts
+- Detailed usage and model file format for the Python checker
+
+Switch to that branch or open it on GitHub to work with the Python version.

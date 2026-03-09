@@ -98,9 +98,10 @@ jobs:
         run: |
           TAG="${GITHUB_REF#refs/tags/}"
           mkdir -p release
-          mv opendefalgsplitting-linux-x86_64/opendefalgsplitting "release/opendefalgsplitting-${TAG}-linux-x86_64"
-          mv opendefalgsplitting-linux-x86_64-musl/opendefalgsplitting "release/opendefalgsplitting-${TAG}-linux-x86_64-musl"
-          mv opendefalgsplitting-windows-x86_64/opendefalgsplitting.exe "release/opendefalgsplitting-${TAG}-windows-x86_64.exe"
+          # Los artefactos conservan la ruta relativa (target/release/...)
+          mv opendefalgsplitting-linux-x86_64/target/release/opendefalgsplitting "release/opendefalgsplitting-${TAG}-linux-x86_64"
+          mv opendefalgsplitting-linux-x86_64-musl/target/x86_64-unknown-linux-musl/release/opendefalgsplitting "release/opendefalgsplitting-${TAG}-linux-x86_64-musl"
+          mv opendefalgsplitting-windows-x86_64/target/release/opendefalgsplitting.exe "release/opendefalgsplitting-${TAG}-windows-x86_64.exe"
           chmod +x release/opendefalgsplitting-*
 
       - name: Create Release and upload assets
