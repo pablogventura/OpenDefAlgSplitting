@@ -2,7 +2,7 @@
 
 Open definability checker for finite algebras. It decides whether relations are definable in first-order logic from the operations of the algebra.
 
-**This repository (default branch) contains the Rust implementation.** The original **Python** implementation is on the **[python](https://github.com/pablogventura/OpenDefAlgSplitting/tree/python)** branch.
+**This branch contains only the Rust implementation** (no Python code). You get the binary, tests, example models (`model_examples/`), and the fixtures used by tests (`testing/tests_definibilidad/fixtures/`). The original **Python** implementation lives on the **[python](https://github.com/pablogventura/OpenDefAlgSplitting/tree/python)** branch.
 
 ---
 
@@ -239,11 +239,4 @@ The Rust implementation uses [rayon](https://github.com/rayon-rs/rayon) to paral
 
 ## Python version
 
-The original implementation and the full Python documentation (model generators, quality tools, test suite) live on the **[python](https://github.com/pablogventura/OpenDefAlgSplitting/tree/python)** branch. That branch includes:
-
-- Python 3.7+ and dependencies (`termcolor`, `pytest`)
-- Model generators (Boolean, random, abelian groups, lattices, etc.) and definable-target generation
-- Static analysis (Ruff, Pyright), formatting, and code quality scripts
-- Detailed usage and model file format for the Python checker
-
-Switch to that branch or open it on GitHub to work with the Python version.
+There is **no Python code in this branch**. The original Python implementation, model generators (Boolean, random, abelian groups, lattices, etc.), and its documentation live on the **[python](https://github.com/pablogventura/OpenDefAlgSplitting/tree/python)** branch. Use that branch if you need the Python checker or the generators.

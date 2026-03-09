@@ -22,21 +22,6 @@ fn run_rust_main(model_path: &Path) -> String {
         + &String::from_utf8_lossy(&output.stderr)
 }
 
-#[cfg(feature = "python_comparison")]
-fn run_python_main(model_path: &Path) -> String {
-    let project_root = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let main_py = project_root.join("main.py");
-    let output = Command::new("python3")
-        .arg(&main_py)
-        .arg(model_path)
-        .env("PYTHONPATH", project_root)
-        .output()
-        .expect("Failed to run Python main");
-    String::from_utf8_lossy(&output.stdout)
-        .into_owned()
-        + &String::from_utf8_lossy(&output.stderr)
-}
-
 fn is_definable(out: &str) -> bool {
     out.contains("DEFINABLE") && !out.split("DEFINABLE").next().unwrap_or("").contains("NOT DEFINABLE")
 }
@@ -168,47 +153,6 @@ T0(x,y) eq(x,y)
     let out = run_rust_main(&tmp);
     let _ = std::fs::remove_file(&tmp);
     assert!(is_definable(&out), "Diagonal debe ser DEFINABLE. Salida: {}", &out[..out.len().min(400)]);
-}
-
-#[cfg(feature = "python_comparison")]
-#[test]
-fn test_equivalence_modeloqueanda() {
-    let project_root = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let model_path = project_root.join("model_examples").join("modeloqueanda.model");
-    if !model_path.exists() {
-        return;
-    }
-    let rust_out = run_rust_main(&model_path);
-    let py_out = run_python_main(&model_path);
-    assert_eq!(
-        is_definable(&rust_out),
-        is_definable(&py_out),
-        "Rust y Python deben coincidir en modeloqueanda. Rust: {} Python: {}",
-        is_definable(&rust_out),
-        is_definable(&py_out)
-    );
-}
-
-#[cfg(feature = "python_comparison")]
-#[test]
-fn test_equivalence_suma4() {
-    let project_root = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let model_path = project_root.join("model_examples").join("suma4.model");
-    if !model_path.exists() {
-        return;
-    }
-    let rust_out = run_rust_main(&model_path);
-    let py_out = run_python_main(&model_path);
-    assert_eq!(
-        is_definable(&rust_out),
-        is_definable(&py_out),
-        "Rust y Python deben coincidir en suma4"
-    );
-    assert_eq!(
-        is_not_definable(&rust_out),
-        is_not_definable(&py_out),
-        "Rust y Python deben coincidir en suma4 (NOT DEFINABLE)"
-    );
 }
 
 /// Ejecuta el binario con los argumentos dados y devuelve stdout+stderr.
