@@ -7,8 +7,9 @@ use colored::Colorize;
 use rayon::prelude::*;
 use opendefalgsplitting::{
     first_order::formulas,
-    hit::{is_open_def, HitConfig, Counterexample},
+    hit::{is_open_def, ExploreOrder, HitConfig, Counterexample, reset_run_stats, run_stats_snapshot},
     parse_model,
+    select_strategy_explained, StrategyDecision,
 };
 
 /// Resultado de ejecutar el checker sobre un modelo (para benchmarks).
@@ -17,11 +18,23 @@ pub enum BenchResult {
     NotDefinable,
 }
 
+struct CliOptions {
+    bench_mode: bool,
+    paths: Vec<String>,
+    repeat: u32,
+    hit_config: HitConfig,
+    class_mode: bool,
+    ablation_csv: bool,
+    use_auto: bool,
+    explain_strategy: bool,
+}
+
 /// Ejecuta el checker sobre un modelo ya cargado; devuelve DEFINABLE o el primer contraejemplo. No imprime nada.
 fn run_checker(
     model: &opendefalgsplitting::first_order::models::Model,
     targets_by_arity: &HashMap<usize, Vec<opendefalgsplitting::first_order::relops::Relation>>,
     hit_config: HitConfig,
+    use_auto: bool,
 ) -> Result<BenchResult, Counterexample> {
     let mut arities: Vec<_> = targets_by_arity.keys().cloned().collect();
     arities.sort();
@@ -32,7 +45,7 @@ fn run_checker(
         }
         let results: Vec<_> = targets_rels
             .par_iter()
-            .map(|target| is_open_def(model, vec![target.clone()], hit_config))
+            .map(|target| decide_target(model, target, hit_config, use_auto, false))
             .collect();
         for res in results {
             if let Err(ce) = res {
@@ -43,20 +56,76 @@ fn run_checker(
     Ok(BenchResult::Definable)
 }
 
+fn decide_target(
+    model: &opendefalgsplitting::first_order::models::Model,
+    target: &opendefalgsplitting::first_order::relops::Relation,
+    hit_config: HitConfig,
+    use_auto: bool,
+    explain: bool,
+) -> Result<opendefalgsplitting::first_order::formulas::Formula, Counterexample> {
+    let config = if use_auto {
+        let (decision, explanation) = select_strategy_explained(model, target);
+        if explain {
+            eprintln!("--- strategy for {} ---\n{}", target.sym, explanation);
+        }
+        match decision {
+            StrategyDecision::RejectPattern { reason }
+            | StrategyDecision::RejectUnary { reason } => {
+                if explain {
+                    eprintln!("reject: {}", reason);
+                }
+                return Err(Counterexample(
+                    target.r.iter().take(1).cloned().collect(),
+                ));
+            }
+            StrategyDecision::AcceptUnary { reason } => {
+                if explain {
+                    eprintln!("accept unary: {}", reason);
+                }
+                // Sin ops: ∅ -> false, A -> true (Lean qfDefinable_unary_noFunctions).
+                if target.r.is_empty() {
+                    return Ok(formulas::false_formula(None));
+                }
+                return Ok(formulas::true_formula(None));
+            }
+            StrategyDecision::Run { config, .. } => config,
+        }
+    } else {
+        if explain {
+            eprintln!(
+                "--- strategy for {} ---\nmanual config (no auto): {:?}",
+                target.sym, hit_config
+            );
+        }
+        hit_config
+    };
+    is_open_def(model, vec![target.clone()], config)
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.iter().any(|a| a == "--help" || a == "-h") {
         print_help();
         return;
     }
-    let (bench_mode, paths, repeat, hit_config) = parse_args(&args);
+    let opts = parse_args(&args);
 
-    if bench_mode {
-        run_bench_mode(&paths, repeat, hit_config);
+    if opts.bench_mode {
+        run_bench_mode(
+            &opts.paths,
+            opts.repeat,
+            opts.hit_config,
+            opts.ablation_csv,
+            opts.use_auto,
+        );
+        return;
+    }
+    if opts.class_mode {
+        run_class_mode(&opts.paths, opts.hit_config, opts.use_auto);
         return;
     }
 
-    let path = paths.first().map(|s| Path::new(s.as_str()));
+    let path = opts.paths.first().map(|s| Path::new(s.as_str()));
     let mut model = match parse_model(path, true) {
         Ok(m) => m,
         Err(e) => {
@@ -88,6 +157,9 @@ fn main() {
 
     println!("{}", "********************".bold());
     println!("Deciding definability for subrelations");
+    if opts.use_auto {
+        println!("(strategy: auto)");
+    }
 
     let mut formula = formulas::false_formula(None);
     let start = Instant::now();
@@ -110,7 +182,13 @@ fn main() {
         let results: Vec<_> = targets_rels
             .par_iter()
             .map(|target| {
-                let res = is_open_def(&model, vec![target.clone()], hit_config);
+                let res = decide_target(
+                    &model,
+                    target,
+                    opts.hit_config,
+                    opts.use_auto,
+                    opts.explain_strategy,
+                );
                 (target, res)
             })
             .collect();
@@ -165,47 +243,7 @@ fn main() {
     }
 }
 
-fn run_bench_mode(paths: &[String], repeat: u32, hit_config: HitConfig) {
-    println!("model\tms\tresult");
-    if paths.is_empty() {
-        eprintln!("--bench requiere al menos un archivo .model");
-        std::process::exit(1);
-    }
-    for path in paths {
-        let path = Path::new(path);
-        let mut times_ms: Vec<f64> = Vec::with_capacity(repeat as usize);
-        let mut result_str = String::new();
-        for _ in 0..repeat {
-            let (model, targets_by_arity) = match load_model_and_targets(path) {
-                Ok(x) => x,
-                Err(e) => {
-                    eprintln!("{}: {}", path.display(), e);
-                    result_str = format!("error: {}", e);
-                    break;
-                }
-            };
-            let start = Instant::now();
-            match run_checker(&model, &targets_by_arity, hit_config) {
-                Ok(BenchResult::Definable) => result_str = "DEFINABLE".to_string(),
-                Ok(BenchResult::NotDefinable) => result_str = "NOT_DEFINABLE".to_string(),
-                Err(_) => result_str = "NOT_DEFINABLE".to_string(),
-            }
-            times_ms.push(start.elapsed().as_secs_f64() * 1000.0);
-        }
-        if times_ms.is_empty() {
-            println!("{}\t-\t{}", path.display(), result_str);
-        } else if times_ms.len() == 1 {
-            println!("{}\t{:.2}\t{}", path.display(), times_ms[0], result_str);
-        } else {
-            let mean = times_ms.iter().sum::<f64>() / times_ms.len() as f64;
-            let variance = times_ms.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / times_ms.len() as f64;
-            let std = variance.sqrt();
-            println!("{}\t{:.2} ± {:.2}\t{}\t(n={})", path.display(), mean, std, result_str, times_ms.len());
-        }
-    }
-}
-
-fn load_model_and_targets(
+fn load_model_targets(
     path: &Path,
 ) -> Result<
     (
@@ -214,7 +252,7 @@ fn load_model_and_targets(
     ),
     String,
 > {
-    let model = parse_model(Some(path), true).map_err(|e| e.to_string())?;
+    let mut model = parse_model(Some(path), true).map_err(|e| e.to_string())?;
     let target_syms: Vec<String> = model
         .relations
         .keys()
@@ -222,104 +260,279 @@ fn load_model_and_targets(
         .cloned()
         .collect();
     if target_syms.is_empty() {
-        return Err("NO TARGET RELATIONS".to_string());
+        return Err("NO TARGET RELATIONS FOUND".into());
     }
     let mut targets_by_arity: HashMap<usize, Vec<_>> = HashMap::new();
     for sym in &target_syms {
-        let rel = model.relations.get(sym).cloned().unwrap();
+        let rel = model.relations.remove(sym).unwrap();
         targets_by_arity.entry(rel.arity).or_default().push(rel);
     }
     Ok((model, targets_by_arity))
 }
 
-fn print_help() {
-    let name = env::args().next().unwrap_or_else(|| "opendefalgsplitting".into());
-    let name = name.as_str();
-    eprintln!(
-        "Uso: {} [OPCIONES] [ARCHIVO.model]
+fn run_bench_mode(
+    paths: &[String],
+    repeat: u32,
+    hit_config: HitConfig,
+    ablation_csv: bool,
+    use_auto: bool,
+) {
+    if paths.is_empty() {
+        eprintln!("--bench requiere al menos un archivo .model");
+        std::process::exit(1);
+    }
+    if ablation_csv {
+        println!("model,ms,steps,skipped,approx_reject,result,formula_size");
+    } else {
+        println!("model\tms\tresult");
+    }
+    for path in paths {
+        let path = Path::new(path);
+        let mut times_ms: Vec<f64> = Vec::with_capacity(repeat as usize);
+        let mut result_str = String::new();
+        let mut steps = 0u64;
+        let mut skipped = 0u64;
+        let mut approx_r = 0u64;
+        let mut formula_size = 0usize;
+        for _ in 0..repeat {
+            let (model, targets_by_arity) = match load_model_targets(path) {
+                Ok(x) => x,
+                Err(e) => {
+                    eprintln!("{}: {}", path.display(), e);
+                    std::process::exit(1);
+                }
+            };
+            reset_run_stats();
+            let start = Instant::now();
+            let res = run_checker(&model, &targets_by_arity, hit_config, use_auto);
+            let elapsed = start.elapsed().as_secs_f64() * 1000.0;
+            times_ms.push(elapsed);
+            let (s, _c, sk, ar) = run_stats_snapshot();
+            steps = s;
+            skipped = sk;
+            approx_r = ar;
+            match &res {
+                Ok(BenchResult::Definable) => {
+                    result_str = "DEFINABLE".into();
+                    formula_size = 0;
+                }
+                Ok(BenchResult::NotDefinable) => result_str = "NOT_DEFINABLE".into(),
+                Err(_) => result_str = "NOT_DEFINABLE".into(),
+            }
+            let _ = formula_size;
+        }
+        let mean = times_ms.iter().sum::<f64>() / times_ms.len() as f64;
+        if ablation_csv {
+            println!(
+                "{},{:.3},{},{},{},{},{}",
+                path.display(),
+                mean,
+                steps,
+                skipped,
+                approx_r,
+                result_str,
+                formula_size
+            );
+        } else if repeat > 1 {
+            let var = times_ms.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / times_ms.len() as f64;
+            let std = var.sqrt();
+            println!("{}\t{:.3}±{:.3}\t{}", path.display(), mean, std, result_str);
+        } else {
+            println!("{}\t{:.3}\t{}", path.display(), mean, result_str);
+        }
+    }
+}
 
-Decide si las relaciones objetivo (T...) son definibles en lógica de primer orden
-a partir de las operaciones del modelo. Si no se pasa ARCHIVO, lee el modelo por stdin.
+fn run_class_mode(paths: &[String], hit_config: HitConfig, use_auto: bool) {
+    if paths.len() < 2 {
+        eprintln!("--class requiere al menos 2 archivos .model");
+        std::process::exit(1);
+    }
+    println!("model\tresult");
+    let mut results = Vec::new();
+    for path in paths {
+        let path = Path::new(path);
+        let (model, targets_by_arity) = match load_model_targets(path) {
+            Ok(x) => x,
+            Err(e) => {
+                eprintln!("{}: {}", path.display(), e);
+                std::process::exit(1);
+            }
+        };
+        let res = run_checker(&model, &targets_by_arity, hit_config, use_auto);
+        let label = match res {
+            Ok(BenchResult::Definable) => "DEFINABLE",
+            Ok(BenchResult::NotDefinable) | Err(_) => "NOT_DEFINABLE",
+        };
+        println!("{}\t{}", path.display(), label);
+        results.push(label);
+    }
+    let all_same = results.windows(2).all(|w| w[0] == w[1]);
+    if all_same {
+        println!("CLASS_VERDICT\tUNIFORM\t{}", results[0]);
+    } else {
+        println!("CLASS_VERDICT\tMIXED");
+    }
+}
+
+
+fn print_help() {
+    let name = std::env::args().next().unwrap_or_else(|| "opendefalgsplitting".into());
+    eprintln!(
+        "Uso: {name} [OPCIONES] [ARCHIVO.model]
+
+Decide definibilidad QF de relaciones T... a partir de las operaciones del modelo.
+
+Por defecto (sin flags de estrategia) usa selector automático: skip+simplify,
+approx solo bajo presupuesto, y rechazo por patrón sin ops.
 
 Opciones:
-  -h, --help              Muestra esta ayuda
-  -i, --information-gain  Elige cada paso maximizando information gain (más lento, a veces menos pasos)
-  --ig-sample N           Con -i, candidatos a muestrear; 0 = sin límite (por defecto: 20)
-  --bench [MODELOS...]     Modo benchmark: mide tiempo por modelo (varios archivos). Ver abajo.
-  --repeat N              Con --bench, ejecuta cada modelo N veces y muestra media ± desv. (por defecto: 1)
+  -h, --help                 Ayuda
+  --no-auto                  Desactiva el selector (usa HitConfig por defecto o flags)
+  --explain-strategy         Imprime la decisión del selector (stderr)
+  --no-skip-useless          Desactiva skip_useless (desactiva auto)
+  -i, --information-gain     Calcula IG (legacy: no cambia el orden de splits)
+  --ig-experimental          Aplica de verdad el mejor candidato IG (puede cambiar veredictos)
+  --ig-sample N              Candidatos a muestrear con -i (0 = todos; default 20)
+  --skip-useless             Forzar skip (desactiva auto)
+  --approx-precheck          Forzar rechazo temprano approx (desactiva auto)
+  --simplify                 Simplificar fórmula resultado (desactiva auto)
+  --bfs                      Explorar el árbol en BFS (desactiva auto)
+  --max-steps N              Tope de pasos de splitting (desactiva auto)
+  --class M1 M2 ...          Modo clase: corre cada modelo y reporta veredictos
+  --bench [MODELOS...]       Benchmark de tiempo
+  --repeat N                 Repeticiones en --bench (default 1)
+  --ablation-csv             Con --bench, imprime CSV: model,ms,steps,skipped,result,...
 
 Ejemplos:
-  {} modelo.model
-  {} modelo.model --information-gain --ig-sample 30
-  {} -i modelo.model
-  {} --bench modelo1.model modelo2.model
-  {} --bench --repeat 3 -i model_examples/gigante.model
-",
-        name, name, name, name, name, name
+  {name} model_examples/modeloqueanda.model
+  {name} --explain-strategy model_examples/suma4.model
+  {name} --no-auto --no-skip-useless model_examples/suma4.model
+  {name} --skip-useless --simplify model_examples/suma4.model
+  {name} --bench --repeat 3 --ablation-csv model_examples/modeloqueanda.model
+"
     );
 }
 
-/// Parsea argumentos. Devuelve (bench_mode, paths, repeat, hit_config).
-/// Con --bench, paths son todos los argumentos posicionales; si no, paths tiene 0 o 1 elemento.
-fn parse_args(args: &[String]) -> (bool, Vec<String>, u32, HitConfig) {
+fn parse_args(args: &[String]) -> CliOptions {
     let mut bench_mode = false;
+    let mut class_mode = false;
     let mut paths = Vec::new();
     let mut repeat = 1u32;
+    let defaults = HitConfig::default();
     let mut use_ig = false;
-    let mut ig_sample = HitConfig::default().ig_sample;
+    let mut ig_experimental = false;
+    let mut ig_sample = defaults.ig_sample;
+    let mut skip_useless = defaults.skip_useless_candidates;
+    let mut approx_precheck = false;
+    let mut simplify = false;
+    let mut bfs = false;
+    let mut max_steps: Option<u64> = None;
+    let mut ablation_csv = false;
+    let mut no_auto = false;
+    let mut explain_strategy = false;
+    let mut strategy_manual = false;
     let mut i = 1;
     while i < args.len() {
-        if args[i] == "--" {
-            i += 1;
-            if i < args.len() {
-                paths.push(args[i].clone());
-            }
-            i += 1;
-            continue;
-        }
-        if args[i] == "--bench" {
-            bench_mode = true;
-            i += 1;
-            continue;
-        }
-        if args[i] == "--repeat" {
-            i += 1;
-            if i < args.len() {
-                if let Ok(n) = args[i].parse::<u32>() {
-                    repeat = n.max(1);
+        match args[i].as_str() {
+            "--" => {
+                i += 1;
+                if i < args.len() {
+                    paths.push(args[i].clone());
                 }
             }
-            i += 1;
-            continue;
-        }
-        if args[i] == "--information-gain" || args[i] == "-i" {
-            use_ig = true;
-            i += 1;
-            continue;
-        }
-        if args[i] == "--ig-sample" {
-            i += 1;
-            if i < args.len() {
-                if let Ok(n) = args[i].parse::<usize>() {
-                    ig_sample = if n == 0 { None } else { Some(n) };
+            "--bench" => bench_mode = true,
+            "--class" => class_mode = true,
+            "--ablation-csv" => ablation_csv = true,
+            "--no-auto" => no_auto = true,
+            "--explain-strategy" => explain_strategy = true,
+            "--repeat" => {
+                i += 1;
+                if i < args.len() {
+                    if let Ok(n) = args[i].parse::<u32>() {
+                        repeat = n.max(1);
+                    }
                 }
             }
-            i += 1;
-            continue;
+            "--information-gain" | "-i" => {
+                use_ig = true;
+                strategy_manual = true;
+            }
+            "--ig-experimental" => {
+                use_ig = true;
+                ig_experimental = true;
+                strategy_manual = true;
+            }
+            "--ig-sample" => {
+                i += 1;
+                if i < args.len() {
+                    if let Ok(n) = args[i].parse::<usize>() {
+                        ig_sample = if n == 0 { None } else { Some(n) };
+                    }
+                }
+                strategy_manual = true;
+            }
+            "--skip-useless" => {
+                skip_useless = true;
+                strategy_manual = true;
+            }
+            "--no-skip-useless" => {
+                skip_useless = false;
+                strategy_manual = true;
+            }
+            "--approx-precheck" => {
+                approx_precheck = true;
+                strategy_manual = true;
+            }
+            "--simplify" => {
+                simplify = true;
+                strategy_manual = true;
+            }
+            "--bfs" => {
+                bfs = true;
+                strategy_manual = true;
+            }
+            "--max-steps" => {
+                i += 1;
+                if i < args.len() {
+                    if let Ok(n) = args[i].parse::<u64>() {
+                        max_steps = Some(n);
+                    }
+                }
+                strategy_manual = true;
+            }
+            s if s.starts_with('-') => {}
+            s => paths.push(s.to_string()),
         }
-        if args[i].starts_with('-') {
-            i += 1;
-            continue;
-        }
-        paths.push(args[i].clone());
         i += 1;
     }
-    if !bench_mode && paths.len() > 1 {
+    if !bench_mode && !class_mode && paths.len() > 1 {
         paths.truncate(1);
     }
+    let use_auto = !no_auto && !strategy_manual;
     let config = HitConfig {
         use_information_gain: use_ig,
         ig_sample,
+        ig_experimental,
+        skip_useless_candidates: skip_useless,
+        approx_precheck,
+        emit_all_constants: true,
+        max_steps,
+        simplify_formula: simplify,
+        explore_order: if bfs {
+            ExploreOrder::Bfs
+        } else {
+            ExploreOrder::Dfs
+        },
     };
-    (bench_mode, paths, repeat, config)
+    CliOptions {
+        bench_mode,
+        paths,
+        repeat,
+        hit_config: config,
+        class_mode,
+        ablation_csv,
+        use_auto,
+        explain_strategy,
+    }
 }

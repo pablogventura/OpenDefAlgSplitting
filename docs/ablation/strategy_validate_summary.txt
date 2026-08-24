@@ -1,0 +1,8 @@
+models_compared=18
+verdict_mismatches=0
+timeout_or_error=0
+mean_ms_auto=40.944
+mean_ms_skip=41.073
+mean_ms_baseline_noskip=47.325
+ratio_auto_over_skip=0.9969
+accept_auto_le_skip=True

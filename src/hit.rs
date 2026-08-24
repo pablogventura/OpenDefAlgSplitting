@@ -6,13 +6,36 @@ use crate::first_order::formulas::{self, Formula, OpSym, Term, Variable};
 use crate::first_order::models::Model;
 use crate::first_order::relops::{Operation, Relation};
 
-/// Configuración del algoritmo: uso de information gain y muestreo de candidatos.
+/// Orden de exploración del árbol de bloques.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ExploreOrder {
+    /// DFS paralelo (Rayon), comportamiento histórico.
+    Dfs,
+    /// BFS iterativo con cola.
+    Bfs,
+}
+
+/// Configuración del algoritmo HIT / splitting.
 #[derive(Clone, Copy, Debug)]
 pub struct HitConfig {
     /// Si true, en cada paso se elige (op, ti) que maximiza information gain.
     pub use_information_gain: bool,
     /// Si use_information_gain, número de candidatos a muestrear (None = todos).
     pub ig_sample: Option<usize>,
+    /// Si true, aplica de verdad el mejor candidato IG (experimental; puede cambiar veredictos).
+    pub ig_experimental: bool,
+    /// No aplicar candidatos que no parten el bloque ni agregan valores nuevos.
+    pub skip_useless_candidates: bool,
+    /// Precheck: si T no es unión de clases ≈ aproximadas (subálgebra etiquetada), NOT DEFINABLE.
+    pub approx_precheck: bool,
+    /// Emitir todas las constantes 0-arias al inicio (ya es el comportamiento del generador; flag documentado).
+    pub emit_all_constants: bool,
+    /// Tope de pasos de splitting (None = sin tope). Si se excede, se trata como no definible.
+    pub max_steps: Option<u64>,
+    /// Simplificar la fórmula resultado (True/False redundantes).
+    pub simplify_formula: bool,
+    /// DFS (default) o BFS.
+    pub explore_order: ExploreOrder,
 }
 
 impl Default for HitConfig {
@@ -20,8 +43,62 @@ impl Default for HitConfig {
         Self {
             use_information_gain: false,
             ig_sample: Some(20),
+            ig_experimental: false,
+            skip_useless_candidates: true,
+            approx_precheck: false,
+            emit_all_constants: true,
+            max_steps: None,
+            simplify_formula: false,
+            explore_order: ExploreOrder::Dfs,
         }
     }
+}
+
+/// Contadores globales de una corrida (atómicos para Rayon).
+pub struct HitRunStats {
+    pub steps: std::sync::atomic::AtomicU64,
+    pub candidates_considered: std::sync::atomic::AtomicU64,
+    pub candidates_skipped: std::sync::atomic::AtomicU64,
+    pub approx_reject: std::sync::atomic::AtomicU64,
+}
+
+impl HitRunStats {
+    pub fn new() -> Self {
+        Self {
+            steps: std::sync::atomic::AtomicU64::new(0),
+            candidates_considered: std::sync::atomic::AtomicU64::new(0),
+            candidates_skipped: std::sync::atomic::AtomicU64::new(0),
+            approx_reject: std::sync::atomic::AtomicU64::new(0),
+        }
+    }
+    pub fn snapshot(&self) -> (u64, u64, u64, u64) {
+        use std::sync::atomic::Ordering::Relaxed;
+        (
+            self.steps.load(Relaxed),
+            self.candidates_considered.load(Relaxed),
+            self.candidates_skipped.load(Relaxed),
+            self.approx_reject.load(Relaxed),
+        )
+    }
+}
+
+static RUN_STATS: HitRunStats = HitRunStats {
+    steps: std::sync::atomic::AtomicU64::new(0),
+    candidates_considered: std::sync::atomic::AtomicU64::new(0),
+    candidates_skipped: std::sync::atomic::AtomicU64::new(0),
+    approx_reject: std::sync::atomic::AtomicU64::new(0),
+};
+
+pub fn reset_run_stats() {
+    use std::sync::atomic::Ordering::Relaxed;
+    RUN_STATS.steps.store(0, Relaxed);
+    RUN_STATS.candidates_considered.store(0, Relaxed);
+    RUN_STATS.candidates_skipped.store(0, Relaxed);
+    RUN_STATS.approx_reject.store(0, Relaxed);
+}
+
+pub fn run_stats_snapshot() -> (u64, u64, u64, u64) {
+    RUN_STATS.snapshot()
 }
 
 fn entropy(in_count: i64, out_count: i64) -> f64 {
@@ -441,6 +518,14 @@ impl Block {
     }
 
     pub fn step(&mut self) -> Result<Vec<Block>, Counterexample> {
+        let steps = RUN_STATS.steps.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
+        if let Some(max) = self.config.max_steps {
+            if steps > max {
+                return Err(Counterexample(
+                    self.tuples.iter().map(|th| th.t.clone()).collect(),
+                ));
+            }
+        }
         let (op, ti) = if self.config.use_information_gain {
             // Con un solo candidato usamos step() para mantener el mismo orden que sin IG y no colgar.
             if self.config.ig_sample == Some(1) {
@@ -456,10 +541,82 @@ impl Block {
                 Some(n) => self.generator.take_candidates(n),
                 None => self.generator.enumerate_candidates(),
             };
-            if cand_list.is_empty() {
-                self.generator.finished = true;
-                return Ok(vec![self.clone()]);
+            let mut cand_list = cand_list;
+            if self.config.skip_useless_candidates {
+                let before = cand_list.len();
+                cand_list.retain(|(op, ti)| {
+                    let mut splits = false;
+                    let mut adds = false;
+                    let mut first_idx: Option<usize> = None;
+                    for th in &self.tuples {
+                        let (idx, is_new) = th.simulate_step(op, ti);
+                        if is_new {
+                            adds = true;
+                        }
+                        match first_idx {
+                            None => first_idx = Some(idx),
+                            Some(f) if f != idx => splits = true,
+                            _ => {}
+                        }
+                    }
+                    splits || adds
+                });
+                RUN_STATS.candidates_skipped.fetch_add(
+                    (before - cand_list.len()) as u64,
+                    std::sync::atomic::Ordering::Relaxed,
+                );
             }
+            RUN_STATS.candidates_considered.fetch_add(
+                cand_list.len() as u64,
+                std::sync::atomic::Ordering::Relaxed,
+            );
+            // Si el sample quedó vacío tras skip, no marcar finished: el generador
+            // puede tener más candidatos (legacy -i sigue step(); experimental busca útil).
+            if cand_list.is_empty() {
+                if self.config.ig_experimental && self.config.skip_useless_candidates {
+                    loop {
+                        match self.generator.step() {
+                            None => {
+                                self.generator.finished = true;
+                                return Ok(vec![self.clone()]);
+                            }
+                            Some((op, ti)) => {
+                                RUN_STATS
+                                    .candidates_considered
+                                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                                let mut splits = false;
+                                let mut adds = false;
+                                let mut first_idx: Option<usize> = None;
+                                for th in &self.tuples {
+                                    let (idx, is_new) = th.simulate_step(&op, &ti);
+                                    if is_new {
+                                        adds = true;
+                                    }
+                                    match first_idx {
+                                        None => first_idx = Some(idx),
+                                        Some(f) if f != idx => splits = true,
+                                        _ => {}
+                                    }
+                                }
+                                if splits || adds {
+                                    break (op, ti);
+                                }
+                                RUN_STATS
+                                    .candidates_skipped
+                                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                            }
+                        }
+                    }
+                } else {
+                    match self.generator.step() {
+                        Some(x) => x,
+                        None => {
+                            self.generator.finished = true;
+                            return Ok(vec![self.clone()]);
+                        }
+                    }
+                }
+            } else {
             let tuples_clone = self.tuples.clone();
             let n = tuples_clone.len();
             let in_total = tuples_clone.iter().filter(|th| th.in_target).count();
@@ -509,10 +666,14 @@ impl Block {
                 })
                 .max_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
             }
-            // Usar siempre el primer candidato en orden step() para que el resultado coincida
-            // con el modo sin IG; elegir por IG cambiaría el orden y puede dar NOT_DEFINABLE falso.
+            // Por defecto (-i) se calcula IG pero se sigue el orden step() (legacy).
+            // Con ig_experimental se aplica el mejor candidato + advance_until.
             match best {
-                Some((_ig, _best_idx, _op, _ti)) => {
+                Some((_ig, _best_idx, op, ti)) if self.config.ig_experimental => {
+                    self.generator.advance_until(&op, &ti);
+                    (op, ti)
+                }
+                Some(_) => {
                     let (op, ti) = self.generator.step().expect("al menos un candidato");
                     (op, ti)
                 }
@@ -521,6 +682,41 @@ impl Block {
                     return Ok(vec![self.clone()]);
                 }
             }
+            }
+            }
+        } else if self.config.skip_useless_candidates {
+            loop {
+                match self.generator.step() {
+                    None => {
+                        self.generator.finished = true;
+                        return Ok(vec![self.clone()]);
+                    }
+                    Some((op, ti)) => {
+                        RUN_STATS
+                            .candidates_considered
+                            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                        let mut splits = false;
+                        let mut adds = false;
+                        let mut first_idx: Option<usize> = None;
+                        for th in &self.tuples {
+                            let (idx, is_new) = th.simulate_step(&op, &ti);
+                            if is_new {
+                                adds = true;
+                            }
+                            match first_idx {
+                                None => first_idx = Some(idx),
+                                Some(f) if f != idx => splits = true,
+                                _ => {}
+                            }
+                        }
+                        if splits || adds {
+                            break (op, ti);
+                        }
+                        RUN_STATS
+                            .candidates_skipped
+                            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    }
+                }
             }
         } else {
             match self.generator.step() {
@@ -611,6 +807,19 @@ pub fn is_open_def(
     targets: Vec<Relation>,
     config: HitConfig,
 ) -> Result<Formula, Counterexample> {
+    reset_run_stats();
+    if config.approx_precheck {
+        for target in &targets {
+            if crate::approx::target_breaks_approx_classes(model, target) {
+                RUN_STATS
+                    .approx_reject
+                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                return Err(Counterexample(
+                    target.r.iter().take(1).cloned().collect(),
+                ));
+            }
+        }
+    }
     let arity = targets[0].arity;
     let universe = &model.universe;
     let targets_ref: Vec<&Relation> = targets.iter().collect();
@@ -632,7 +841,50 @@ pub fn is_open_def(
         .unwrap()
         .preprocessed_formula();
     let start_block = Block::new(operations, tuples, targets, formula, config);
-    is_open_def_parallel_recursive(start_block)
+    let result = match config.explore_order {
+        ExploreOrder::Dfs => is_open_def_parallel_recursive(start_block),
+        ExploreOrder::Bfs => is_open_def_bfs(start_block),
+    };
+    match result {
+        Ok(f) if config.simplify_formula => Ok(f.simplify_ast()),
+        other => other,
+    }
+}
+
+/// Exploración BFS: cola de bloques; combina fórmulas de hojas con OR.
+fn is_open_def_bfs(start: Block) -> Result<Formula, Counterexample> {
+    use std::collections::VecDeque;
+    let mut queue: VecDeque<Block> = VecDeque::new();
+    queue.push_back(start);
+    let mut leaf_formulas: Vec<Formula> = Vec::new();
+    while let Some(mut block) = queue.pop_front() {
+        if block.is_all_in_targets() {
+            leaf_formulas.push(block.formula);
+            continue;
+        }
+        if block.is_disjunt_to_targets() {
+            leaf_formulas.push(formulas::false_formula(None));
+            continue;
+        }
+        if block.finished() {
+            return Err(Counterexample(
+                block.tuples.iter().map(|th| th.t.clone()).collect(),
+            ));
+        }
+        match block.step() {
+            Err(ce) => return Err(ce),
+            Ok(children) => {
+                for child in children {
+                    queue.push_back(child);
+                }
+            }
+        }
+    }
+    let mut combined = formulas::false_formula(None);
+    for f in leaf_formulas {
+        combined = combined.or_formula(&f);
+    }
+    Ok(combined)
 }
 
 /// Explora el árbol de bloques en paralelo cuando hay varios hijos; con un solo hijo

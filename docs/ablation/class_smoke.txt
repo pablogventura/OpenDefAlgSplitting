@@ -1,0 +1,4 @@
+model	result
+model_examples/modeloqueanda.model	DEFINABLE
+model_examples/suma4.model	NOT_DEFINABLE
+CLASS_VERDICT	MIXED
