@@ -200,4 +200,71 @@ mod tests {
         let model = Model::new(universe, HashMap::new(), HashMap::new());
         assert!(matches!(decide_unary(&model, &target), UnaryDecision::Skip));
     }
+
+    /// Companion worked example (b): three elements, no ops, partial target.
+    #[test]
+    fn unary_three_element_partial_rejects() {
+        let universe = vec![0, 1, 2];
+        let target = Relation::new("T", 1).with_tuples(vec![vec![0], vec![1]]);
+        let model = Model::new(universe, HashMap::new(), HashMap::new());
+        match decide_unary(&model, &target) {
+            UnaryDecision::NotDefinable { reason } => {
+                assert!(
+                    reason.contains("neither empty nor full"),
+                    "expected no-ops partial reject, got {reason}"
+                );
+            }
+            other => panic!("expected NotDefinable, got {:?}", other),
+        }
+    }
+}
+
+/// One row of unary-backend coverage for a single target relation.
+#[derive(Clone, Debug)]
+pub struct UnaryAuditRow {
+    pub target_sym: String,
+    pub arity: usize,
+    pub decision: String,
+    pub has_nonunary_ops: bool,
+    pub would_early_exit: bool,
+    pub reason: String,
+}
+
+fn decision_label(d: &UnaryDecision) -> &'static str {
+    match d {
+        UnaryDecision::Skip => "Skip",
+        UnaryDecision::Definable { .. } => "Definable",
+        UnaryDecision::NotDefinable { .. } => "NotDefinable",
+    }
+}
+
+/// Classify every target relation (symbols starting with `T`) under `decide_unary`.
+pub fn audit_unary_targets(model: &Model) -> Vec<UnaryAuditRow> {
+    let has_nonunary = has_nonunary_ops(model);
+    model
+        .relations
+        .iter()
+        .filter(|(sym, _)| sym.starts_with('T'))
+        .map(|(sym, rel)| {
+            let decision = decide_unary(model, rel);
+            let would_early_exit = matches!(
+                &decision,
+                UnaryDecision::Definable { .. } | UnaryDecision::NotDefinable { .. }
+            );
+            let reason = match &decision {
+                UnaryDecision::Skip => "skip".into(),
+                UnaryDecision::Definable { reason } | UnaryDecision::NotDefinable { reason } => {
+                    reason.clone()
+                }
+            };
+            UnaryAuditRow {
+                target_sym: sym.clone(),
+                arity: rel.arity,
+                decision: decision_label(&decision).into(),
+                has_nonunary_ops: has_nonunary,
+                would_early_exit,
+                reason,
+            }
+        })
+        .collect()
 }

@@ -16,7 +16,7 @@ pub use hit::{is_open_def, Counterexample, ExploreOrder, HitConfig, reset_run_st
 pub use strategy::{
     extract_features, select_strategy, select_strategy_explained, StrategyDecision,
 };
-pub use unary::{decide_unary, UnaryDecision};
+pub use unary::{audit_unary_targets, decide_unary, UnaryAuditRow, UnaryDecision};
 
 #[cfg(test)]
 mod tests {

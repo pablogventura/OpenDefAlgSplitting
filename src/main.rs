@@ -9,6 +9,7 @@ use opendefalgsplitting::{
     first_order::formulas,
     hit::{is_open_def, ExploreOrder, HitConfig, Counterexample, reset_run_stats, run_stats_snapshot},
     parse_model,
+    audit_unary_targets,
     select_strategy_explained, StrategyDecision,
 };
 
@@ -20,6 +21,7 @@ pub enum BenchResult {
 
 struct CliOptions {
     bench_mode: bool,
+    unary_audit_mode: bool,
     paths: Vec<String>,
     repeat: u32,
     hit_config: HitConfig,
@@ -118,6 +120,10 @@ fn main() {
             opts.ablation_csv,
             opts.use_auto,
         );
+        return;
+    }
+    if opts.unary_audit_mode {
+        run_unary_audit_mode(&opts.paths);
         return;
     }
     if opts.class_mode {
@@ -376,6 +382,69 @@ fn run_class_mode(paths: &[String], hit_config: HitConfig, use_auto: bool) {
 }
 
 
+fn csv_field(value: &str) -> String {
+    if value.contains(',') || value.contains('"') || value.contains('\n') {
+        format!("\"{}\"", value.replace('"', "'"))
+    } else {
+        value.to_string()
+    }
+}
+
+fn run_unary_audit_mode(paths: &[String]) {
+    if paths.is_empty() {
+        eprintln!("--unary-audit requires at least one model path");
+        std::process::exit(1);
+    }
+    println!(
+        "model,target,arity,unary_decision,has_nonunary_ops,would_early_exit,reason"
+    );
+    for path_str in paths {
+        let path = Path::new(path_str);
+        let model = match parse_model(Some(path), true) {
+            Ok(m) => m,
+            Err(e) => {
+                eprintln!(
+                    "{},{},{},{},{},{},{}",
+                    csv_field(&path.display().to_string()),
+                    csv_field(""),
+                    csv_field("0"),
+                    csv_field("ERROR"),
+                    csv_field("false"),
+                    csv_field("false"),
+                    csv_field(&e.to_string()),
+                );
+                continue;
+            }
+        };
+        let rows = audit_unary_targets(&model);
+        if rows.is_empty() {
+            println!(
+                "{},{},{},{},{},{},{}",
+                csv_field(&path.display().to_string()),
+                csv_field(""),
+                csv_field("0"),
+                csv_field("NoTargets"),
+                csv_field("false"),
+                csv_field("false"),
+                csv_field("no T... relations"),
+            );
+            continue;
+        }
+        for row in rows {
+            println!(
+                "{},{},{},{},{},{},{}",
+                csv_field(&path.display().to_string()),
+                csv_field(&row.target_sym),
+                csv_field(&row.arity.to_string()),
+                csv_field(&row.decision),
+                csv_field(if row.has_nonunary_ops { "true" } else { "false" }),
+                csv_field(if row.would_early_exit { "true" } else { "false" }),
+                csv_field(&row.reason),
+            );
+        }
+    }
+}
+
 fn print_help() {
     let name = std::env::args().next().unwrap_or_else(|| "opendefalgsplitting".into());
     eprintln!(
@@ -401,6 +470,7 @@ Opciones:
   --max-steps N              Tope de pasos de splitting (desactiva auto)
   --class M1 M2 ...          Modo clase: corre cada modelo y reporta veredictos
   --bench [MODELOS...]       Benchmark de tiempo
+  --unary-audit [MODELOS...] CSV de cobertura del backend unario por target
   --repeat N                 Repeticiones en --bench (default 1)
   --ablation-csv             Con --bench, imprime CSV: model,ms,steps,skipped,result,...
 
@@ -416,6 +486,7 @@ Ejemplos:
 
 fn parse_args(args: &[String]) -> CliOptions {
     let mut bench_mode = false;
+    let mut unary_audit_mode = false;
     let mut class_mode = false;
     let mut paths = Vec::new();
     let mut repeat = 1u32;
@@ -442,6 +513,7 @@ fn parse_args(args: &[String]) -> CliOptions {
                 }
             }
             "--bench" => bench_mode = true,
+            "--unary-audit" => unary_audit_mode = true,
             "--class" => class_mode = true,
             "--ablation-csv" => ablation_csv = true,
             "--no-auto" => no_auto = true,
@@ -506,7 +578,7 @@ fn parse_args(args: &[String]) -> CliOptions {
         }
         i += 1;
     }
-    if !bench_mode && !class_mode && paths.len() > 1 {
+    if !bench_mode && !class_mode && !unary_audit_mode && paths.len() > 1 {
         paths.truncate(1);
     }
     let use_auto = !no_auto && !strategy_manual;
@@ -527,6 +599,7 @@ fn parse_args(args: &[String]) -> CliOptions {
     };
     CliOptions {
         bench_mode,
+        unary_audit_mode,
         paths,
         repeat,
         hit_config: config,
