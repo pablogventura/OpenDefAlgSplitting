@@ -44,9 +44,10 @@ El selector emite `false` / `true` sin correr HIT.
 ### 4b - Con operaciones unarias (conteo de huellas)
 
 Si existen a ∈ T, b ∉ T con la misma huella de cierre unario (sobre-aproximación
-de ≈), entonces T no es QF-definible (`not_qfDefinable_of_approx_mix`).
-Early-exit a NOT DEFINABLE es sound. Si el conteo afirma definible, HIT
-sintetiza la fórmula (el backend no inventa φ).
+de ≈), entonces T no es QF-definible. Lean:
+`not_qfDefinable_of_sameTermEqFingerprint_Ka_mix` (pool que cubre `T_{K_a}`) /
+`not_qfDefinable_of_approx_mix`. Early-exit a NOT DEFINABLE es sound. Si el
+conteo afirma definible, HIT sintetiza la fórmula (el backend no inventa φ).
 
 ## Lema 5 - Límites del selector
 

@@ -7,7 +7,9 @@
 //!
 //! Con operaciones unarias, se usa conteo de huellas del subuniverso generado
 //! (esquema Castellano Cor. 13): para cada huella h de un a ∈ R debe valer
-//! |R_h| = |A_h|.
+//! |R_h| = |A_h|. Soundness Lean: `SameTermEqFingerprint` + cobertura de
+//! `T_{K_a}` ⇒ `not_qfDefinable_of_sameTermEqFingerprint_Ka_mix` (vía Lema mat
+//! y `not_qfDefinable_of_approx_mix`).
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
