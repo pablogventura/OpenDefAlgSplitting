@@ -11,6 +11,7 @@ use opendefalgsplitting::{
     parse_model,
     audit_unary_targets,
     select_strategy_explained, StrategyDecision,
+    check_engine, EngineKind, FragmentKind,
 };
 
 /// Resultado de ejecutar el checker sobre un modelo (para benchmarks).
@@ -29,6 +30,10 @@ struct CliOptions {
     ablation_csv: bool,
     use_auto: bool,
     explain_strategy: bool,
+    fragment: String,
+    engine: String,
+    max_depth: usize,
+    max_k: usize,
 }
 
 /// Ejecuta el checker sobre un modelo ya cargado; devuelve DEFINABLE o el primer contraejemplo. No imprime nada.
@@ -131,6 +136,23 @@ fn main() {
         return;
     }
 
+    let frag = match FragmentKind::parse(&opts.fragment) {
+        Ok(f) => f,
+        Err(e) => {
+            eprintln!("{e}");
+            std::process::exit(1);
+        }
+    };
+    let eng = match EngineKind::parse(&opts.engine) {
+        Ok(e) => e,
+        Err(e) => {
+            eprintln!("{e}");
+            std::process::exit(1);
+        }
+    };
+    let use_partition_engine = !matches!(frag, FragmentKind::Qf)
+        || matches!(eng, EngineKind::Merge);
+
     let path = opts.paths.first().map(|s| Path::new(s.as_str()));
     let mut model = match parse_model(path, true) {
         Ok(m) => m,
@@ -152,6 +174,48 @@ fn main() {
         std::process::exit(1);
     }
 
+    if use_partition_engine {
+        let start = Instant::now();
+        let mut targets: Vec<_> = target_syms
+            .iter()
+            .filter_map(|s| model.relations.remove(s))
+            .collect();
+        targets.sort_by(|a, b| a.sym.cmp(&b.sym));
+        for target in targets {
+            match check_engine(
+                &model,
+                &target,
+                frag,
+                eng,
+                opts.max_depth,
+                opts.max_k,
+            ) {
+                Ok(out) => {
+                    if out.definable {
+                        println!("{}", "DEFINABLE".green());
+                    } else {
+                        println!("{}", "NOT DEFINABLE".red());
+                    }
+                    println!(
+                        "# meta: {{\"fragment\":\"{}\",\"engine\":\"{}\",\"target\":\"{}\"}}",
+                        out.fragment, out.engine, target.sym
+                    );
+                    if !out.definable {
+                        println!("Elapsed time: {:?}", start.elapsed());
+                        return;
+                    }
+                }
+                Err(e) => {
+                    eprintln!("engine error: {e}");
+                    std::process::exit(1);
+                }
+            }
+        }
+        println!("Elapsed time: {:?}", start.elapsed());
+        return;
+    }
+
+    // Legacy HIT path (qf split/hit/auto)
     let mut targets_by_arity: HashMap<usize, Vec<_>> = HashMap::new();
     for sym in &target_syms {
         let rel = model.relations.remove(sym).unwrap();
@@ -204,10 +268,11 @@ fn main() {
                 Ok(f) => {
                     println!("\t{} is definable", target.sym.green());
                     println!("by {}", f);
-                    formula = formula.or_formula(&{
-                        let post = target.pattern.as_ref().unwrap().postprocessed_formula();
-                        f.and_formula(&post)
-                    });
+                    let piece = match &target.pattern {
+                        Some(p) => f.and_formula(&p.postprocessed_formula()),
+                        None => f,
+                    };
+                    formula = formula.or_formula(&piece);
                 }
                 Err(Counterexample(tuples)) => {
                     println!("{}", "NOT DEFINABLE".red());
@@ -503,6 +568,10 @@ fn parse_args(args: &[String]) -> CliOptions {
     let mut no_auto = false;
     let mut explain_strategy = false;
     let mut strategy_manual = false;
+    let mut fragment = "qf".to_string();
+    let mut engine = "auto".to_string();
+    let mut max_depth = 2usize;
+    let mut max_k = 1usize;
     let mut i = 1;
     while i < args.len() {
         match args[i].as_str() {
@@ -518,6 +587,34 @@ fn parse_args(args: &[String]) -> CliOptions {
             "--ablation-csv" => ablation_csv = true,
             "--no-auto" => no_auto = true,
             "--explain-strategy" => explain_strategy = true,
+            "--fragment" => {
+                i += 1;
+                if i < args.len() {
+                    fragment = args[i].clone();
+                }
+            }
+            "--engine" => {
+                i += 1;
+                if i < args.len() {
+                    engine = args[i].clone();
+                }
+            }
+            "--max-depth" => {
+                i += 1;
+                if i < args.len() {
+                    if let Ok(n) = args[i].parse::<usize>() {
+                        max_depth = n;
+                    }
+                }
+            }
+            "--max-k" => {
+                i += 1;
+                if i < args.len() {
+                    if let Ok(n) = args[i].parse::<usize>() {
+                        max_k = n;
+                    }
+                }
+            }
             "--repeat" => {
                 i += 1;
                 if i < args.len() {
@@ -607,5 +704,9 @@ fn parse_args(args: &[String]) -> CliOptions {
         ablation_csv,
         use_auto,
         explain_strategy,
+        fragment,
+        engine,
+        max_depth,
+        max_k,
     }
 }

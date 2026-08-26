@@ -5,6 +5,7 @@ pub mod hit;
 pub mod approx;
 pub mod strategy;
 pub mod unary;
+pub mod engines;
 
 #[cfg(feature = "cuda")]
 pub mod hit_cuda;
@@ -17,6 +18,7 @@ pub use strategy::{
     extract_features, select_strategy, select_strategy_explained, StrategyDecision,
 };
 pub use unary::{audit_unary_targets, decide_unary, UnaryAuditRow, UnaryDecision};
+pub use engines::{check_engine, EngineKind, EngineOutcome, FragmentKind};
 
 #[cfg(test)]
 mod tests {
