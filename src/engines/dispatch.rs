@@ -4,7 +4,9 @@ use crate::engines::horn::check_horn;
 use crate::engines::morph::{check_embedding_split, check_morph_split, check_qf_merge};
 use crate::engines::partition::TuplePartition;
 use crate::engines::positive::check_positive_split;
-use crate::engines::types::{atomic_pp_type, clear_type_caches, fo_type, type_explosion_risk};
+use crate::engines::types::{
+    atomic_pp_type, clear_type_caches, ep_type, fo_type, type_explosion_risk,
+};
 use crate::first_order::models::Model;
 use crate::first_order::relops::Relation;
 use crate::hit::{is_open_def, HitConfig};
@@ -113,10 +115,11 @@ pub fn check_engine(
         FragmentKind::QfPos => check_positive_split(model, target),
         FragmentKind::Ep => {
             if engine == EngineKind::Ktypes {
+                // Default max_existentials=1 matches fopy.ep_ktypes.
                 let d = max_depth;
-                type_split(model, target, "ep", &format!("ep_ktypes_d{d}"), |row| {
-                    let sig = atomic_pp_type(model, row, d);
-                    sig.iter().flat_map(|x| x.to_le_bytes()).collect()
+                let e = 1usize;
+                type_split(model, target, "ep", &format!("ep_ktypes_d{d}_e{e}"), |row| {
+                    ep_type(model, row, d, e)
                 })
             } else {
                 check_morph_split(model, target)

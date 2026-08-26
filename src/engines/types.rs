@@ -194,3 +194,69 @@ pub fn type_explosion_risk(model: &Model, target_arity: usize) -> bool {
             .values()
             .any(|op| op.arity >= 3)
 }
+
+/// Equality pattern of a row (pairs i<j with equal coordinates).
+/// Used for EP types when the operational signature is empty: absolute element
+/// ids are not EP-definable without constants/ops.
+fn equality_pattern(row: &[i64]) -> Vec<u8> {
+    let mut out = Vec::with_capacity(row.len() * row.len() / 2);
+    for i in 0..row.len() {
+        for j in (i + 1)..row.len() {
+            out.push(if row[i] == row[j] { 1 } else { 0 });
+        }
+    }
+    out
+}
+
+fn ep_matrix_type(model: &Model, row: &[i64], max_depth: usize) -> Vec<u8> {
+    if model.operations.is_empty() {
+        equality_pattern(row)
+    } else {
+        atomic_pp_type(model, row, max_depth)
+            .iter()
+            .flat_map(|x| x.to_le_bytes())
+            .collect()
+    }
+}
+
+/// EP type: PP (or equality) matrix plus multiset of types of bounded
+/// existential extensions. Parity with `fopy.finite.fragments.ep_ktypes`.
+pub fn ep_type(
+    model: &Model,
+    row: &[i64],
+    max_depth: usize,
+    max_existentials: usize,
+) -> Vec<u8> {
+    let base = ep_matrix_type(model, row, max_depth);
+    if max_existentials == 0 {
+        return base;
+    }
+    let universe = &model.universe;
+    let mut extensions: Vec<Vec<u8>> = Vec::new();
+    // Cartesian products U^m for m = 1..=max_existentials.
+    let mut extras: Vec<Vec<i64>> = vec![vec![]];
+    for _ in 0..max_existentials {
+        let mut next = Vec::new();
+        for prefix in &extras {
+            for &u in universe {
+                let mut e = prefix.clone();
+                e.push(u);
+                next.push(e);
+            }
+        }
+        extras = next;
+        for extra in &extras {
+            let mut extended = row.to_vec();
+            extended.extend_from_slice(extra);
+            extensions.push(ep_matrix_type(model, &extended, max_depth));
+        }
+    }
+    extensions.sort();
+    let mut out = base;
+    out.push(0xff); // separator
+    for ext in extensions {
+        out.extend_from_slice(&(ext.len() as u32).to_le_bytes());
+        out.extend_from_slice(&ext);
+    }
+    out
+}
