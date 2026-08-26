@@ -2,8 +2,12 @@
 
 use crate::first_order::models::Model;
 use crate::first_order::relops::Operation;
-use std::collections::BTreeMap;
+use std::cell::RefCell;
+use std::collections::{BTreeMap, HashMap};
 use std::hash::{Hash, Hasher};
+
+/// Cap term depth used inside FO-k neighbour signatures (independent of arity).
+pub const FO_PP_DEPTH_CAP: usize = 2;
 
 #[derive(Clone)]
 enum TermNode {
@@ -69,7 +73,32 @@ fn term_arg_tuples(terms: &[TermNode], arity: usize) -> Vec<Vec<TermNode>> {
     result
 }
 
+thread_local! {
+    static PP_CACHE: RefCell<HashMap<(Vec<i64>, usize), Vec<i64>>> =
+        RefCell::new(HashMap::new());
+    static FO_CACHE: RefCell<HashMap<(Vec<i64>, usize, usize), Vec<u8>>> =
+        RefCell::new(HashMap::new());
+}
+
+/// Clear thread-local type caches (call between independent engine runs if needed).
+pub fn clear_type_caches() {
+    PP_CACHE.with(|c| c.borrow_mut().clear());
+    FO_CACHE.with(|c| c.borrow_mut().clear());
+}
+
 pub fn atomic_pp_type(model: &Model, row: &[i64], max_depth: usize) -> Vec<i64> {
+    let key = (row.to_vec(), max_depth);
+    if let Some(hit) = PP_CACHE.with(|c| c.borrow().get(&key).cloned()) {
+        return hit;
+    }
+    let computed = atomic_pp_type_uncached(model, row, max_depth);
+    PP_CACHE.with(|c| {
+        c.borrow_mut().insert(key, computed.clone());
+    });
+    computed
+}
+
+fn atomic_pp_type_uncached(model: &Model, row: &[i64], max_depth: usize) -> Vec<i64> {
     let arity = row.len();
     let mut ops_by_arity: BTreeMap<usize, Vec<String>> = BTreeMap::new();
     for (sym, op) in &model.operations {
@@ -117,8 +146,21 @@ pub fn atomic_pp_type(model: &Model, row: &[i64], max_depth: usize) -> Vec<i64> 
 }
 
 pub fn fo_type(model: &Model, row: &[i64], k: usize, arity_vars: usize) -> Vec<u8> {
+    let key = (row.to_vec(), k, arity_vars);
+    if let Some(hit) = FO_CACHE.with(|c| c.borrow().get(&key).cloned()) {
+        return hit;
+    }
+    let computed = fo_type_uncached(model, row, k, arity_vars);
+    FO_CACHE.with(|c| {
+        c.borrow_mut().insert(key, computed.clone());
+    });
+    computed
+}
+
+fn fo_type_uncached(model: &Model, row: &[i64], k: usize, arity_vars: usize) -> Vec<u8> {
+    let pp_depth = arity_vars.max(2).min(FO_PP_DEPTH_CAP);
     if k == 0 {
-        let sig = atomic_pp_type(model, row, arity_vars.max(2));
+        let sig = atomic_pp_type(model, row, pp_depth);
         return sig.iter().flat_map(|x| x.to_le_bytes()).collect();
     }
     let prev = fo_type(model, row, k - 1, arity_vars);
@@ -142,4 +184,13 @@ pub fn fo_type(model: &Model, row: &[i64], k: usize, arity_vars: usize) -> Vec<u
         out.extend_from_slice(&nh.to_le_bytes());
     }
     out
+}
+
+/// True when FO/GF type computation is likely to explode (ternary+ ops, arity>=3).
+pub fn type_explosion_risk(model: &Model, target_arity: usize) -> bool {
+    target_arity >= 3
+        && model
+            .operations
+            .values()
+            .any(|op| op.arity >= 3)
 }

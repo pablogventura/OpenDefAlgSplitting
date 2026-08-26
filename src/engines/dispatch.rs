@@ -4,7 +4,7 @@ use crate::engines::horn::check_horn;
 use crate::engines::morph::{check_embedding_split, check_morph_split, check_qf_merge};
 use crate::engines::partition::TuplePartition;
 use crate::engines::positive::check_positive_split;
-use crate::engines::types::{atomic_pp_type, fo_type};
+use crate::engines::types::{atomic_pp_type, clear_type_caches, fo_type, type_explosion_risk};
 use crate::first_order::models::Model;
 use crate::first_order::relops::Relation;
 use crate::hit::{is_open_def, HitConfig};
@@ -108,6 +108,7 @@ pub fn check_engine(
     max_depth: usize,
     max_k: usize,
 ) -> Result<EngineOutcome, String> {
+    clear_type_caches();
     match fragment {
         FragmentKind::QfPos => check_positive_split(model, target),
         FragmentKind::Ep => {
@@ -143,13 +144,22 @@ pub fn check_engine(
             )
         }
         FragmentKind::Gf => {
-            let k = max_k.max(1);
+            // Ternary ops + arity>=3: stay at k=0 (PP core) to avoid Gaifman blow-up.
+            let k = if type_explosion_risk(model, target.arity) {
+                0
+            } else {
+                max_k.max(1)
+            };
             type_split(model, target, "gf", &format!("guarded_split_k{k}"), |row| {
                 fo_type(model, row, k, target.arity)
             })
         }
         FragmentKind::Fo => {
-            let k = max_k.max(1);
+            let k = if type_explosion_risk(model, target.arity) {
+                0
+            } else {
+                max_k.max(1)
+            };
             type_split(model, target, "fo", &format!("fo_split_k{k}"), |row| {
                 fo_type(model, row, k, target.arity)
             })
