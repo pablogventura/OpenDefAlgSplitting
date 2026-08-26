@@ -96,7 +96,11 @@ fn unary_fingerprint(seed: i64, model: &Model) -> Vec<u8> {
                 }
             }
         } else if op.arity == 1 {
-            for &e in &elems {
+            // Encode the op table in generator-id order so isomorphic
+            // pointed unary algebras share a fingerprint (Castellano Cor.13).
+            let mut by_id: Vec<(u32, i64)> = id_of.iter().map(|(&e, &id)| (id, e)).collect();
+            by_id.sort_by_key(|(id, _)| *id);
+            for &(_id, e) in &by_id {
                 if let Some(v) = op.call(&[e]) {
                     if let (Some(&ie), Some(&iv)) = (id_of.get(&e), id_of.get(&v)) {
                         out.extend_from_slice(&ie.to_le_bytes());
@@ -217,6 +221,26 @@ mod tests {
                 );
             }
             other => panic!("expected NotDefinable, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn unary_flip_partial_not_definable() {
+        use crate::first_order::relops::Operation;
+        let universe = vec![0, 1];
+        let mut s = Operation::new("s", 1);
+        s.add(vec![0, 1]);
+        s.add(vec![1, 0]);
+        let mut ops = HashMap::new();
+        ops.insert("s".into(), s);
+        let target = Relation::new("T0", 1).with_tuples(vec![vec![0]]);
+        let model = Model::new(universe, HashMap::new(), ops);
+        let fp0 = unary_fingerprint(0, &model);
+        let fp1 = unary_fingerprint(1, &model);
+        assert_eq!(fp0, fp1, "flip should give isomorphic fingerprints");
+        match decide_unary(&model, &target) {
+            UnaryDecision::NotDefinable { .. } => {}
+            other => panic!("esperaba NotDefinable, got {:?}", other),
         }
     }
 }

@@ -170,6 +170,18 @@ pub fn select_strategy_explained(
             let decision = StrategyDecision::RejectPattern { reason };
             return (decision, reasons.join("\n"));
         }
+        if feat.pattern_mix == Some(false) {
+            // No ops and every equality pattern is pure: QF-definable by
+            // equalities/inequalities alone (converse of Lema 3a).
+            // Preprocessed pieces: HIT main ANDs ⊤ with pattern.post.
+            let reason =
+                "sin ops y sin pattern_mix: acepto equality-definable (Lema 3a conversa)".to_string();
+            reasons.push(reason.clone());
+            return (
+                StrategyDecision::AcceptUnary { reason },
+                reasons.join("\n"),
+            );
+        }
         reasons.push("sin ops de aridad>0 y sin pattern_mix (o check omitido)".into());
     }
 
