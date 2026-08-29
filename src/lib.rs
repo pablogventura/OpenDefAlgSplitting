@@ -6,6 +6,7 @@ pub mod approx;
 pub mod strategy;
 pub mod unary;
 pub mod engines;
+pub mod stone;
 
 #[cfg(feature = "cuda")]
 pub mod hit_cuda;
@@ -19,6 +20,7 @@ pub use strategy::{
 };
 pub use unary::{audit_unary_targets, decide_unary, UnaryAuditRow, UnaryDecision};
 pub use engines::{check_engine, EngineKind, EngineOutcome, FragmentKind};
+pub use stone::{filtering_functions, FilterReport, StoneSpec};
 
 #[cfg(test)]
 mod tests {

@@ -111,6 +111,10 @@ fn decide_target(
 
 fn main() {
     let args: Vec<String> = env::args().collect();
+    if args.len() >= 2 && args[1] == "stone-filter" {
+        run_stone_filter(&args[2..]);
+        return;
+    }
     if args.iter().any(|a| a == "--help" || a == "-h") {
         print_help();
         return;
@@ -539,6 +543,9 @@ Opciones:
   --repeat N                 Repeticiones en --bench (default 1)
   --ablation-csv             Con --bench, imprime CSV: model,ms,steps,skipped,result,...
 
+Subcomando StoneGral (Alg. 1-2):
+  {name} stone-filter --spec FIXTURE.json [--json]
+
 Ejemplos:
   {name} model_examples/modeloqueanda.model
   {name} --explain-strategy model_examples/suma4.model
@@ -547,6 +554,68 @@ Ejemplos:
   {name} --bench --repeat 3 --ablation-csv model_examples/modeloqueanda.model
 "
     );
+}
+
+
+fn run_stone_filter(args: &[String]) {
+    let mut spec_path: Option<String> = None;
+    let mut json_out = false;
+    let mut i = 0;
+    while i < args.len() {
+        match args[i].as_str() {
+            "--spec" => {
+                i += 1;
+                if i < args.len() {
+                    spec_path = Some(args[i].clone());
+                }
+            }
+            "--json" => json_out = true,
+            "--help" | "-h" => {
+                eprintln!("Uso: stone-filter --spec FIXTURE.json [--json]");
+                return;
+            }
+            other => {
+                eprintln!("Opción desconocida: {other}");
+                return;
+            }
+        }
+        i += 1;
+    }
+    let Some(path) = spec_path else {
+        eprintln!("Falta --spec FIXTURE.json");
+        return;
+    };
+    let text = match std::fs::read_to_string(&path) {
+        Ok(t) => t,
+        Err(e) => {
+            eprintln!("No se pudo leer {path}: {e}");
+            return;
+        }
+    };
+    let spec = match opendefalgsplitting::StoneSpec::parse_json(&text) {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("Spec inválido: {e}");
+            return;
+        }
+    };
+    let report = opendefalgsplitting::filtering_functions(&spec);
+    if json_out {
+        match serde_json::to_string_pretty(&report) {
+            Ok(s) => println!("{s}"),
+            Err(e) => eprintln!("JSON error: {e}"),
+        }
+    } else {
+        println!(
+            "raw={} filtered={} ops={}",
+            report.raw_op_count,
+            report.filtered_op_count,
+            report.operations.len()
+        );
+        for op in &report.operations {
+            println!("  {op}");
+        }
+    }
 }
 
 fn parse_args(args: &[String]) -> CliOptions {
