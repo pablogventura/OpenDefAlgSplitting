@@ -1,7 +1,7 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use crate::stone::discriminator::discriminator;
-use crate::stone::spec::{Elem, StoneSpec};
+use crate::stone::spec::{Elem, PartialIso, StoneSpec};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StoneOp {
@@ -150,6 +150,111 @@ pub fn not_preserves_current(spec: &StoneSpec, op: &StoneOp, ops: &[StoneOp]) ->
     subuniverses_of_ops(spec, ops)
         .iter()
         .any(|u| fails_preserve_on(spec, op, u))
+}
+
+fn sorted_elems(s: &HashSet<Elem>) -> Vec<Elem> {
+    let mut v: Vec<Elem> = s.iter().copied().collect();
+    v.sort_unstable();
+    v
+}
+
+/// `op` no preserva el grafo del subiso parcial `gamma` (Alg. 2).
+pub fn fails_preserve_iso(spec: &StoneSpec, op: &StoneOp, gamma: &PartialIso) -> bool {
+    arg_tuples(&gamma.dom, op.arity()).into_iter().any(|args| {
+        let ev = eval_op(spec, op, &args);
+        let mapped: Vec<Elem> = args.iter().map(|&x| gamma.apply(x)).collect();
+        !gamma.dom.contains(&ev) || gamma.apply(ev) != eval_op(spec, op, &mapped)
+    })
+}
+
+fn ops_preserve_iso_b(spec: &StoneSpec, ops: &[StoneOp], gamma: &PartialIso) -> bool {
+    ops.iter().all(|op| !fails_preserve_iso(spec, op, gamma))
+}
+
+/// Subiso parcial por listas posicionales (identidad fuera del dominio).
+pub fn partial_iso_of_lists(dom_list: &[Elem], cod_list: &[Elem]) -> PartialIso {
+    if dom_list.len() != cod_list.len() {
+        return PartialIso::id_on(&dom_list.iter().copied().collect());
+    }
+    let mut seen_d = HashSet::new();
+    let mut seen_c = HashSet::new();
+    for &x in dom_list {
+        if !seen_d.insert(x) {
+            return PartialIso::id_on(&dom_list.iter().copied().collect());
+        }
+    }
+    for &y in cod_list {
+        if !seen_c.insert(y) {
+            return PartialIso::id_on(&dom_list.iter().copied().collect());
+        }
+    }
+    let map: HashMap<Elem, Elem> = dom_list
+        .iter()
+        .zip(cod_list.iter())
+        .map(|(&x, &y)| (x, y))
+        .collect();
+    PartialIso {
+        dom: seen_d,
+        cod: seen_c,
+        map,
+    }
+}
+
+fn permutations(items: &[Elem]) -> Vec<Vec<Elem>> {
+    if items.is_empty() {
+        return vec![vec![]];
+    }
+    let mut out = Vec::new();
+    fn rec(rest: &mut Vec<Elem>, prefix: &mut Vec<Elem>, out: &mut Vec<Vec<Elem>>) {
+        if rest.is_empty() {
+            out.push(prefix.clone());
+            return;
+        }
+        for i in 0..rest.len() {
+            let x = rest.remove(i);
+            prefix.push(x);
+            rec(rest, prefix, out);
+            let x = prefix.pop().expect("prefix non-empty");
+            rest.insert(i, x);
+        }
+    }
+    rec(&mut items.to_vec(), &mut Vec::new(), &mut out);
+    out
+}
+
+/// Candidatos a subiso entre subuniversos de igual cardinalidad.
+pub fn candidate_isos(subs: &[HashSet<Elem>]) -> Vec<PartialIso> {
+    let mut out = Vec::new();
+    for u in subs {
+        let u_list = sorted_elems(u);
+        for v in subs {
+            if u.len() != v.len() {
+                continue;
+            }
+            let v_list = sorted_elems(v);
+            for vs in permutations(&v_list) {
+                out.push(partial_iso_of_lists(&u_list, &vs));
+            }
+        }
+    }
+    out
+}
+
+/// Subisos del algebra actual: candidatos que respetan el grafo de todas las ops.
+pub fn current_sub_isos(spec: &StoneSpec, ops: &[StoneOp]) -> Vec<PartialIso> {
+    let subs = subuniverses_of_ops(spec, ops);
+    candidate_isos(&subs)
+        .into_iter()
+        .filter(|gamma| ops_preserve_iso_b(spec, ops, gamma))
+        .collect()
+}
+
+/// Alg. 2 incremental: fallo 1D o fallo en grafo de algun subiso actual.
+pub fn not_preserves_sub_sq_current(spec: &StoneSpec, op: &StoneOp, ops: &[StoneOp]) -> bool {
+    not_preserves_current(spec, op, ops)
+        || current_sub_isos(spec, ops)
+            .iter()
+            .any(|gamma| fails_preserve_iso(spec, op, gamma))
 }
 
 #[cfg(test)]

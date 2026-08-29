@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::stone::preserve::{not_preserves_current, StoneOp};
+use crate::stone::preserve::{not_preserves_sub_sq_current, StoneOp};
 use crate::stone::spec::{Elem, StoneSpec};
 
 pub fn injective_tuples(universe_size: usize, k: usize) -> Vec<Vec<Elem>> {
@@ -66,7 +66,8 @@ pub fn index_i(spec: &StoneSpec) -> Vec<StoneOp> {
     ops
 }
 
-/// Incremental FilteringFunctions (StoneGral.pdf Alg. 1).
+/// Incremental FilteringFunctions via Thm 3.2 index enumeration + Alg. 2.
+/// Prefer `gap_driven_filtering` for the Baker-Pixley gap algorithm.
 pub fn filtering_functions(spec: &StoneSpec) -> super::report::FilterReport {
     let mut ops = vec![StoneOp::Discriminator];
     let mut raw = 0usize;
@@ -77,7 +78,7 @@ pub fn filtering_functions(spec: &StoneSpec) -> super::report::FilterReport {
         let gop = StoneOp::GD {
             domain: domain.clone(),
         };
-        if not_preserves_current(spec, &gop, &ops) {
+        if not_preserves_sub_sq_current(spec, &gop, &ops) {
             ops.push(gop);
             filtered += 1;
         }
@@ -85,7 +86,7 @@ pub fn filtering_functions(spec: &StoneSpec) -> super::report::FilterReport {
 
     for fop in index_i(spec) {
         raw += 1;
-        if not_preserves_current(spec, &fop, &ops) {
+        if not_preserves_sub_sq_current(spec, &fop, &ops) {
             ops.push(fop);
             filtered += 1;
         }
