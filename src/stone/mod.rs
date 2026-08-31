@@ -1,6 +1,11 @@
 //! Stone realizability (StoneGral.pdf): Alg. 1-2 over finite universes.
+//!
 //! Preferred path: gap-driven Baker-Pixley synthesis (`gap_filter`).
-//! Legacy path: Thm 3.2 index enumeration + Alg. 2 filter (`filter`).
+//! Legacy / certificate path: Thm 3.2 index enumeration + Alg. 2 (`filter`).
+//!
+//! Name map (do not cross with Lean):
+//! - Rust `filtering_functions` = Lean `gapDrivenFiltering` (preferred; golden fixtures).
+//! - Rust `filtering_functions_thm32` = Lean `filteringFunctions` (Thm 3.2 certificate).
 
 pub mod discriminator;
 pub mod filter;

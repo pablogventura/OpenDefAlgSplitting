@@ -1,3 +1,7 @@
+//! Thm 3.2 certificate filter: enumerate index I/J candidates, keep those that
+//! fail Alg. 2 against the current ops (`filtering_functions_thm32` at crate root).
+//! Preferred path is gap-driven (`gap_filter` / crate `filtering_functions`).
+
 use std::collections::HashSet;
 
 use crate::stone::preserve::{not_preserves_sub_sq_current, StoneOp};

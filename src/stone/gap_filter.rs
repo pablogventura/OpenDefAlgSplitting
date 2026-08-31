@@ -113,6 +113,7 @@ fn raw_op_count(spec: &StoneSpec) -> usize {
 /// Gap-driven FilteringFunctions (preferred algorithm).
 pub fn gap_driven_filtering(spec: &StoneSpec) -> FilterReport {
     let mut ops = vec![StoneOp::Discriminator];
+    // Lean gapFuel = 2^n + (2^n)^2; here we cap the exponent at 12 for RAM.
     let fuel = (1usize << spec.universe.len().min(12)) + 256;
     for _ in 0..fuel {
         if !gap_step(spec, &mut ops) {
