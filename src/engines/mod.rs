@@ -5,6 +5,9 @@ pub mod positive;
 pub mod types;
 pub mod morphisms;
 pub mod morph;
+pub mod tuple_model_hash;
+pub mod megahit;
+pub mod guarded;
 pub mod horn;
 pub mod dispatch;
 

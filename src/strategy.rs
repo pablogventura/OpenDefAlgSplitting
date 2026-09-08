@@ -3,7 +3,7 @@
 //! Política (criterio velocidad, mismo veredicto):
 //! - `skip_useless` siempre ON en modo auto; simplify OFF (velocidad)
 //! - rechazo por mezcla de patrón de igualdad si no hay ops de aridad > 0 (sound)
-//! - `approx_precheck` OFF en auto (sin predictor de early-exit; usar flag manual)
+//! - `approx_precheck` ON en auto solo bajo umbral empírico conservador (M5)
 
 use std::collections::HashMap;
 
@@ -14,12 +14,17 @@ use crate::preprocessing::Pattern;
 use crate::unary::{decide_unary, UnaryDecision};
 
 /// Tope histórico de tuplas dominio^aridad (documentación / flags manuales).
-/// En modo auto no se enciende approx: si no hay early-exit el costo supera a HIT+skip.
 pub const APPROX_MAX_DOMAIN_TUPLES: u64 = 50_000;
 /// Tope histórico de operaciones para approx manual.
 pub const APPROX_MAX_OPS: usize = 8;
 /// Tope de tuplas para el chequeo de mezcla de patrones.
 pub const PATTERN_CHECK_MAX_TUPLES: u64 = 200_000;
+
+/// M5 auto: umbral conservador cuando el sweep chico no calibra un predictor fino.
+/// Approx solo paga si corta (`approx_reject>0`); si no, es overhead (gigante /
+/// modelosexperimento). Residual: dominios chicos + pocas ops.
+pub const APPROX_AUTO_MAX_DOMAIN_TUPLES: u64 = 512;
+pub const APPROX_AUTO_MAX_OPS: usize = 3;
 
 #[derive(Clone, Debug)]
 pub struct ModelFeatures {
@@ -126,17 +131,34 @@ pub fn extract_features(model: &Model, target: &Relation) -> ModelFeatures {
     }
 }
 
-fn base_fast_config() -> HitConfig {
+/// Conservative auto policy for `approx_precheck` (M5).
+///
+/// Empiria (safe suite): approx helps mainly when it early-rejects
+/// (`16_T3_4_0`); enabling on `pattern_mix` alone worsened averages when
+/// approx did not cut. Without a calibrated reject predictor, use a tight
+/// residual budget (small domain × few ops).
+pub fn should_approx_precheck_auto(feat: &ModelFeatures) -> bool {
+    feat.domain_tuples > 0
+        && feat.domain_tuples <= APPROX_AUTO_MAX_DOMAIN_TUPLES
+        && feat.ops_total <= APPROX_AUTO_MAX_OPS
+        && feat.ops_arity_gt0 > 0
+}
+
+fn base_fast_config(approx_precheck: bool) -> HitConfig {
     HitConfig {
         use_information_gain: false,
         ig_sample: Some(20),
         ig_experimental: false,
         skip_useless_candidates: true,
-        approx_precheck: false,
+        approx_precheck,
         emit_all_constants: true,
         max_steps: None,
         simplify_formula: false,
         explore_order: ExploreOrder::Dfs,
+        max_rayon_children: 1,
+        synthesize_formula: true,
+        max_rss_kib: None,
+        eager_isotype_on_impure: true,
     }
 }
 
@@ -215,13 +237,21 @@ pub fn select_strategy_explained(
         }
     }
 
-    let config = base_fast_config();
+    let approx = should_approx_precheck_auto(&feat);
+    let config = base_fast_config(approx);
     reasons.push("skip_useless=true (Lema 1)".into());
     reasons.push("simplify_formula=false (auto prioriza velocidad; usar --simplify)".into());
-    reasons.push(format!(
-        "approx_precheck=false en auto (manual si dominio<={} y ops<={})",
-        APPROX_MAX_DOMAIN_TUPLES, APPROX_MAX_OPS
-    ));
+    if approx {
+        reasons.push(format!(
+            "approx_precheck=true en auto (umbral conservador dominio<={} ops<={}; M5 residual)",
+            APPROX_AUTO_MAX_DOMAIN_TUPLES, APPROX_AUTO_MAX_OPS
+        ));
+    } else {
+        reasons.push(format!(
+            "approx_precheck=false en auto (fuera de umbral dominio<={} ops<={}; manual --approx-precheck)",
+            APPROX_AUTO_MAX_DOMAIN_TUPLES, APPROX_AUTO_MAX_OPS
+        ));
+    }
 
     let explanation = reasons.join("\n");
     (
@@ -288,5 +318,28 @@ mod tests {
     #[test]
     fn default_hit_config_has_skip() {
         assert!(HitConfig::default().skip_useless_candidates);
+    }
+
+    #[test]
+    fn approx_auto_on_small_ops_domain() {
+        let (model, target) = model_with_op_arity2();
+        let feat = extract_features(&model, &target);
+        // |U|=2, arity=2 -> 4 tuples; 1 op -> inside conservative residual.
+        assert!(should_approx_precheck_auto(&feat));
+        match select_strategy(&model, &target) {
+            StrategyDecision::Run { config, .. } => {
+                assert!(config.approx_precheck);
+            }
+            other => panic!("esperaba Run, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn approx_auto_off_without_ops() {
+        let universe = vec![0, 1, 2];
+        let target = Relation::new("T", 2).with_tuples(vec![vec![0, 0], vec![1, 1], vec![2, 2]]);
+        let model = Model::new(universe, HashMap::new(), HashMap::new());
+        let feat = extract_features(&model, &target);
+        assert!(!should_approx_precheck_auto(&feat));
     }
 }

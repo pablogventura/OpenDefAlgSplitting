@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "master_seed": 20260908,
+  "n_per_cell_pilot": 5,
+  "n_per_cell_full": 5,
+  "sizes": [4, 8, 16, 32, 64, 128],
+  "arities_k": [2],
+  "max_tuples": 200000,
+  "timeout_secs_by_n": {
+    "4": 30,
+    "8": 60,
+    "16": 90,
+    "32": 180,
+    "64": 300,
+    "128": 600
+  },
+  "families": [
+    {
+      "id": "random_magma",
+      "sizes": [4, 8, 16, 32, 64, 128],
+      "k": [2],
+      "ops": [2],
+      "targets": ["full"]
+    }
+  ]
+}

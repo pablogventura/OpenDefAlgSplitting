@@ -8,6 +8,32 @@ use std::hash::Hash;
 
 pub const MAX_TUPLE_PARTITION: usize = 256;
 
+/// Arity for tuple enumeration when *target* may be a preprocessed pattern rel.
+pub fn effective_target_arity(target: &Relation) -> usize {
+    target
+        .superrel
+        .as_ref()
+        .map(|r| r.arity)
+        .unwrap_or(target.arity)
+}
+
+/// Membership in *target* for a partition row.
+///
+/// Prefer the projected ``target`` when arities match (pattern pieces such as
+/// ``T0|0,1|a1``). Fall back to ``superrel`` only when the row has the
+/// unsplit arity (e.g. GF partitioning at ``effective_target_arity``).
+pub fn target_accepts_row(target: &Relation, row: &[i64]) -> bool {
+    if row.len() == target.arity {
+        return target.contains(row);
+    }
+    if let Some(superrel) = &target.superrel {
+        if row.len() == superrel.arity {
+            return superrel.contains(row);
+        }
+    }
+    target.contains(row)
+}
+
 #[derive(Debug, Clone)]
 pub struct TuplePartition {
     pub blocks: Vec<Vec<Vec<i64>>>,
@@ -53,7 +79,7 @@ impl TuplePartition {
             let mut seen_in = false;
             let mut seen_out = false;
             for row in block {
-                if target.contains(row) {
+                if target_accepts_row(target, row) {
                     seen_in = true;
                 } else {
                     seen_out = true;

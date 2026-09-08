@@ -41,9 +41,8 @@ run_one() {
     echo "  FAIL ${variant} ${model}"
     return 0
   fi
-  local rest="${line#*,}"
-  echo "${variant},${rest}" >> "$CSV"
-  echo "  ok ${variant} ${model} => ${rest}"
+  echo "${variant},${line}" >> "$CSV"
+  echo "  ok ${variant} ${model} => ${line}"
 }
 
 echo "=== SMOKE ==="

@@ -13,7 +13,9 @@ TIMEOUT_SECS=90
 REPEAT=5
 
 cd "$ROOT"
-cargo build --release
+if [[ ! -x "$BIN" ]]; then
+  cargo build --release
+fi
 
 avail_gib() {
   awk '/MemAvailable:/ {printf "%d", $2/1024/1024}' /proc/meminfo
@@ -90,4 +92,14 @@ for m in "${MODELS[@]}"; do
 done
 
 echo "CSV -> $CSV" | tee -a "$LOG"
-python3 "$ROOT/scripts/analyze_ablation.py" "$CSV" | tee "$OUT_DIR/analysis_safe.txt"
+# shellcheck source=/dev/null
+if [[ -f "$ROOT/scripts/ccad/common.env.sh" ]]; then
+  source "$ROOT/scripts/ccad/common.env.sh"
+  ccad_analyze_ablation_csv "$CSV" "$OUT_DIR/analysis_safe.txt" | tee -a "$LOG"
+else
+  if command -v python3 >/dev/null 2>&1; then
+    python3 "$ROOT/scripts/analyze_ablation.py" "$CSV" | tee "$OUT_DIR/analysis_safe.txt"
+  else
+    echo "WARN: python3 not found; skipping analysis (CSV is complete)." | tee -a "$LOG"
+  fi
+fi

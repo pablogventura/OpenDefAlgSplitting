@@ -16,6 +16,7 @@ Open definability checker for finite algebras. It decides whether relations are 
 - [Building from source](#building-from-source)
 - [Releases and pre-built binaries](#releases-and-pre-built-binaries)
 - [Tests](#tests)
+- [CCAD Serafin (Slurm)](#ccad-serafin-slurm)
 - [Optional features](#optional-features)
 - [Python version](#python-version)
 
@@ -201,6 +202,23 @@ cargo test
 ```
 
 Runs unit and integration tests (parser, algorithm, definable/non-definable model checks). For integration tests that run the built binary: `cargo test` from the repo root (they use the debug binary by default).
+
+Ablation benches (local only if you have enough RAM):
+
+```bash
+bash scripts/run_ablation.sh          # smoke + medium
+bash scripts/run_ablation_safe.sh     # 18 models, 5 repeats
+bash scripts/run_ablation_extended.sh # larger suite
+```
+
+## CCAD Serafin (Slurm)
+
+**Run all tests and ablation campaigns on Serafin**, not on a shared laptop login node. Full procedure, `#SBATCH` templates, mail/`DONE` markers, and `submit_all.sh`: see [docs/CCAD_SERAFIN.md](docs/CCAD_SERAFIN.md).
+
+```bash
+# on serafin login, after rsync + rustup:
+bash ~/src/OpenDefAlgSplitting/scripts/ccad/submit_all.sh
+```
 
 ---
 

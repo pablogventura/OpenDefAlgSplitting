@@ -11,12 +11,15 @@ Criterio: **velocidad** con el mismo veredicto DEFINABLE / NOT DEFINABLE.
 | `skip_useless` | Siempre ON en auto (Lema 1) |
 | Mezcla de patrón sin ops de aridad > 0 | Rechazo inmediato NOT DEFINABLE (Lema 3a) |
 | Chequeo de patrón con ops | No se ejecuta en auto (no decide flags; solo costo) |
-| `approx_precheck` | OFF en auto (sin predictor fiable de early-exit; usar `--approx-precheck`) |
+| `approx_precheck` | ON en auto solo bajo umbral conservador M5 (`domain_tuples<=512` y `ops<=3` con ops); si no, OFF (usar `--approx-precheck`) |
 | `simplify` | OFF en auto (costo en fórmulas grandes; usar `--simplify`) |
 
 Escape: `--no-auto`, flags manuales (`--skip-useless`, `--approx-precheck`, `-i`, `--bfs`, etc.), `--no-skip-useless`, `--explain-strategy`.
 
-Umbrales documentados (referencia para approx manual): `APPROX_MAX_DOMAIN_TUPLES = 50000`, `APPROX_MAX_OPS = 8`.
+Umbrales documentados:
+- Manual: `APPROX_MAX_DOMAIN_TUPLES = 50000`, `APPROX_MAX_OPS = 8`.
+- Auto (M5 residual, sin predictor de early-exit calibrado en sweep chico):
+  `APPROX_AUTO_MAX_DOMAIN_TUPLES = 512`, `APPROX_AUTO_MAX_OPS = 3`.
 
 Lemas: [STRATEGY_LEMMAS.md](STRATEGY_LEMMAS.md).
 
@@ -73,4 +76,7 @@ CSV: [ablation/results_strategy_validate.csv](ablation/results_strategy_validate
 
 1. Encender approx ante `pattern_mix` empeoró el promedio cuando approx no corta (`modelosexperimento`, `modelosimplequefalla`, `gigante`).
 2. `simplify` en auto sumaba ~15% en media (dominado por `gigante`).
-3. Política final: auto ≈ skip puro + rechazo por patrón solo sin ops.
+3. **M5 (2026-08-27):** el sweep chico no calibra un predictor fino de early-exit.
+   Política auto residual: `approx_precheck` solo si `domain_tuples<=512` y
+   `ops<=3` (con ops). Fuera de eso: skip puro + rechazo por patrón sin ops;
+   approx manual con `--approx-precheck`.

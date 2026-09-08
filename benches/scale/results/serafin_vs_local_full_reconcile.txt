@@ -1,0 +1,4 @@
+Serafin HIT 410027: 2040 rows {'DEFINABLE': 1924, 'NOT_DEFINABLE': 116}
+Serafin MERGE 410028: 2040 rows {'DEFINABLE': 1924, 'NOT_DEFINABLE': 116}
+HIT vs MERGE agree: 2040/2040 (timeouts skipped 0)
+disagree: 0

@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 """Analiza CSV de ablacion: deltas de tiempo vs baseline por variante y modelo."""
-from __future__ import annotations
-
 import csv
 import sys
 from collections import defaultdict
@@ -25,7 +23,7 @@ def main() -> None:
                 continue
             rows.append(r)
 
-    by_model: dict[str, dict[str, dict]] = defaultdict(dict)
+    by_model = defaultdict(dict)  # type: ignore[var-annotated]
     for r in rows:
         by_model[r["model"]][r["variant"]] = r
 

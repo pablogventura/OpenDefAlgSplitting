@@ -62,3 +62,13 @@ Thumbs.db
 # Merge y backups de editor
 *.orig
 *~
+
+# Scale corpus is regenerable from manifest + generate_scale_corpus.py
+benches/scale/corpus/
+benches/scale/corpus_range/
+benches/scale/results/*.log
+benches/scale/results/*.pid
+benches/scale/results/archive_*/
+benches/scale/results/serafin_watch*
+benches/scale/results/merge_full_watch*
+benches/scale/results/*_nohup.out

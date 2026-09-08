@@ -1,10 +1,15 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
+use std::sync::Arc;
 
 use rayon::prelude::*;
 
 use crate::first_order::formulas::{self, Formula, OpSym, Term, Variable};
 use crate::first_order::models::Model;
 use crate::first_order::relops::{Operation, Relation};
+use crate::preprocessing::Pattern;
+
+/// Shared operation table for a HIT run (cloned as Arc across blocks).
+type OpsMap = BTreeMap<usize, Vec<Operation>>;
 
 /// Orden de exploración del árbol de bloques.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -36,6 +41,19 @@ pub struct HitConfig {
     pub simplify_formula: bool,
     /// DFS (default) o BFS.
     pub explore_order: ExploreOrder,
+    /// Max children explored with Rayon in DFS. Default 1 = fully serial (RAM-safe).
+    /// Parallelize only when `1 < children.len() <= max_rayon_children`.
+    pub max_rayon_children: usize,
+    /// If false, skip expensive QF witness synthesis (bench/scale): decision only.
+    pub synthesize_formula: bool,
+    /// Soft RSS cap in KiB (`None` = no check). On Linux, exceeding it aborts as
+    /// not definable (same as `max_steps`) to avoid node OOM kills.
+    pub max_rss_kib: Option<u64>,
+    /// On impure blocks, run compact IsoType (TMH) immediately instead of waiting
+    /// for the HIT generator to finish. Sound for the decision: TMH uses ambient
+    /// IsoType of the original tuple `t`, independent of generator state. Avoids
+    /// magma `n32_k2` TIMEOUT where skip_useless never reaches finished-impure.
+    pub eager_isotype_on_impure: bool,
 }
 
 impl Default for HitConfig {
@@ -50,7 +68,28 @@ impl Default for HitConfig {
             max_steps: None,
             simplify_formula: false,
             explore_order: ExploreOrder::Dfs,
+            max_rayon_children: 1,
+            synthesize_formula: true,
+            max_rss_kib: None,
+            eager_isotype_on_impure: true,
         }
+    }
+}
+
+fn current_rss_kib() -> Option<u64> {
+    #[cfg(target_os = "linux")]
+    {
+        let status = std::fs::read_to_string("/proc/self/status").ok()?;
+        for line in status.lines() {
+            if let Some(rest) = line.strip_prefix("VmRSS:") {
+                return rest.split_whitespace().next()?.parse().ok();
+            }
+        }
+        None
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        None
     }
 }
 
@@ -230,7 +269,7 @@ impl Eq for TupleHistory {}
 
 #[derive(Clone)]
 struct IndicesTupleGenerator {
-    ops: BTreeMap<usize, Vec<Operation>>,
+    ops: Arc<OpsMap>,
     arity: usize,
     viejos: Vec<usize>,
     nuevos: Vec<usize>,
@@ -255,7 +294,7 @@ enum GenState {
 
 impl IndicesTupleGenerator {
     fn new(
-        ops: BTreeMap<usize, Vec<Operation>>,
+        ops: Arc<OpsMap>,
         arity: usize,
         viejos: Vec<usize>,
         nuevos: Vec<usize>,
@@ -264,7 +303,7 @@ impl IndicesTupleGenerator {
             .map(|i| Term::Variable(Variable::from_index(i as i32)))
             .collect();
         Self {
-            ops: ops.clone(),
+            ops,
             arity,
             viejos,
             nuevos,
@@ -339,7 +378,7 @@ impl IndicesTupleGenerator {
                             self.finished = true;
                             return None;
                         }
-                        self.viejos.extend(self.nuevos.drain(..));
+                        // Keep `nuevos` so Init rebuilds the next wave with them forced.
                         self.state = GenState::Init;
                         continue;
                     }
@@ -348,11 +387,14 @@ impl IndicesTupleGenerator {
                             self.finished = true;
                             return None;
                         }
+                        // Promote this wave's nuevos into viejos but force the next
+                        // wave on those indices (not on an empty set after drain).
+                        let forced: HashSet<usize> = self.nuevos.iter().copied().collect();
                         self.viejos.extend(self.nuevos.drain(..));
                         *arity_idx = 0;
-                        let pool: Vec<usize> =
-                            self.viejos.iter().chain(&self.nuevos).cloned().collect();
-                        let forced: HashSet<usize> = self.nuevos.iter().cloned().collect();
+                        *op_idx = 0;
+                        *perm_idx = 0;
+                        let pool = self.viejos.clone();
                         *perms = cartesian_product_indices(&pool, arities[0], &forced);
                         continue;
                     }
@@ -367,10 +409,17 @@ impl IndicesTupleGenerator {
                                 self.finished = true;
                                 return None;
                             }
+                            let forced: HashSet<usize> = self.nuevos.iter().copied().collect();
                             self.viejos.extend(self.nuevos.drain(..));
                             *arity_idx = 0;
+                            *op_idx = 0;
+                            *perm_idx = 0;
+                            let pool = self.viejos.clone();
+                            *perms = cartesian_product_indices(&pool, arities[0], &forced);
+                            continue;
                         }
-                        let pool: Vec<usize> = self.viejos.iter().chain(&self.nuevos).cloned().collect();
+                        let pool: Vec<usize> =
+                            self.viejos.iter().chain(&self.nuevos).cloned().collect();
                         let forced: HashSet<usize> = self.nuevos.iter().cloned().collect();
                         *perms = cartesian_product_indices(&pool, arities[*arity_idx], &forced);
                         continue;
@@ -473,28 +522,54 @@ impl IndicesTupleGenerator {
 
 #[derive(Clone)]
 pub struct Block {
-    operations: BTreeMap<usize, Vec<Operation>>,
+    /// Ambient algebra for IsoType/TMH (targets `T*` stripped from relations).
+    ambient: Arc<Model>,
+    operations: Arc<OpsMap>,
     tuples: Vec<TupleHistory>,
     targets: Vec<Relation>,
     pub formula: Formula,
     arity: usize,
     generator: IndicesTupleGenerator,
     config: HitConfig,
+    /// Shared TMH IsoType cache for this `is_open_def` run.
+    tmh_cache: Arc<crate::engines::tuple_model_hash::TmhCache>,
 }
 
 impl Block {
     pub fn new(
-        operations: BTreeMap<usize, Vec<Operation>>,
+        operations: OpsMap,
+        ambient: Arc<Model>,
         tuples: Vec<TupleHistory>,
         targets: Vec<Relation>,
         formula: Formula,
         config: HitConfig,
     ) -> Self {
+        Self::new_shared(
+            Arc::new(operations),
+            ambient,
+            tuples,
+            targets,
+            formula,
+            config,
+            Arc::new(crate::engines::tuple_model_hash::TmhCache::new()),
+        )
+    }
+
+    fn new_shared(
+        operations: Arc<OpsMap>,
+        ambient: Arc<Model>,
+        tuples: Vec<TupleHistory>,
+        targets: Vec<Relation>,
+        formula: Formula,
+        config: HitConfig,
+        tmh_cache: Arc<crate::engines::tuple_model_hash::TmhCache>,
+    ) -> Self {
         let arity = targets[0].arity;
         let viejos = vec![];
         let nuevos: Vec<usize> = (0..arity).collect();
-        let generator = IndicesTupleGenerator::new(operations.clone(), arity, viejos, nuevos);
+        let generator = IndicesTupleGenerator::new(Arc::clone(&operations), arity, viejos, nuevos);
         Self {
+            ambient,
             operations,
             tuples,
             targets,
@@ -502,6 +577,7 @@ impl Block {
             arity,
             generator,
             config,
+            tmh_cache,
         }
     }
 
@@ -524,6 +600,27 @@ impl Block {
                 return Err(Counterexample(
                     self.tuples.iter().map(|th| th.t.clone()).collect(),
                 ));
+            }
+        }
+        if crate::engines::tuple_model_hash::tmh_stats_enabled()
+            && (steps <= 8 || steps % 64 == 0)
+        {
+            let (c, h, pr, pf, fi) = crate::engines::tuple_model_hash::tmh_stats_snapshot();
+            eprintln!(
+                "HIT_PROGRESS steps={steps} computes={c} cache_hits={h} proxy_rejects={pr} proxy_full={pf} finished_impure={fi} block_tuples={}",
+                self.tuples.len()
+            );
+        }
+        if let Some(max_kib) = self.config.max_rss_kib {
+            // Sample every 64 steps to keep /proc reads cheap.
+            if steps % 64 == 0 {
+                if let Some(rss) = current_rss_kib() {
+                    if rss > max_kib {
+                        return Err(Counterexample(
+                            self.tuples.iter().map(|th| th.t.clone()).collect(),
+                        ));
+                    }
+                }
             }
         }
         let (op, ti) = if self.config.use_information_gain {
@@ -747,15 +844,21 @@ impl Block {
         let mut fneg = formulas::true_formula(None);
         let mut negados = Vec::new();
         let mut i = 0;
+        let synth = self.config.synthesize_formula;
         for (index, tuples_new) in result {
             if tuples_new.iter().any(|th| th.has_generated) {
                 generators[i].hubo_nuevo();
                 negados.push((i, index, tuples_new));
             } else {
-                let fd = generators[i].formula_diferenciadora(index);
-                let f = self.formula.clone().and_formula(&fd);
-                fneg = fneg.and_formula(&fd.neg());
+                let f = if synth {
+                    let fd = generators[i].formula_diferenciadora(index);
+                    fneg = fneg.and_formula(&fd.neg());
+                    self.formula.clone().and_formula(&fd)
+                } else {
+                    formulas::true_formula(None)
+                };
                 blocks.push(Block {
+                    ambient: Arc::clone(&self.ambient),
                     operations: self.operations.clone(),
                     tuples: tuples_new,
                     targets: self.targets.clone(),
@@ -763,13 +866,19 @@ impl Block {
                     arity: self.arity,
                     generator: generators[i].clone(),
                     config: self.config,
+                    tmh_cache: Arc::clone(&self.tmh_cache),
                 });
             }
             i += 1;
         }
         for (i, _index, tuples_new) in negados {
-            let f = self.formula.clone().and_formula(&fneg);
+            let f = if synth {
+                self.formula.clone().and_formula(&fneg)
+            } else {
+                formulas::true_formula(None)
+            };
             blocks.push(Block {
+                ambient: Arc::clone(&self.ambient),
                 operations: self.operations.clone(),
                 tuples: tuples_new,
                 targets: self.targets.clone(),
@@ -777,6 +886,7 @@ impl Block {
                 arity: self.arity,
                 generator: generators[i].clone(),
                 config: self.config,
+                tmh_cache: Arc::clone(&self.tmh_cache),
             });
         }
         Ok(blocks)
@@ -808,6 +918,8 @@ pub fn is_open_def(
     config: HitConfig,
 ) -> Result<Formula, Counterexample> {
     reset_run_stats();
+    crate::engines::tuple_model_hash::reset_tmh_stats();
+    crate::engines::tuple_model_hash::ensure_tmh_stats_atexit();
     if config.approx_precheck {
         for target in &targets {
             if crate::approx::target_breaks_approx_classes(model, target) {
@@ -823,8 +935,17 @@ pub fn is_open_def(
     let arity = targets[0].arity;
     let universe = &model.universe;
     let targets_ref: Vec<&Relation> = targets.iter().collect();
+    // After equality-pattern preprocessing, each piece only speaks about tuples of
+    // that pattern. Enumerating all of A^k injects foreign-pattern rows (e.g.
+    // diagonals into an off-diagonal piece), so the initial block is never full
+    // even when the original target was R=A^k — killing the info-gap early accept.
+    let pattern = targets[0].pattern.clone();
     let mut tuples: Vec<TupleHistory> = cartesian_product_sized(universe, arity)
         .into_iter()
+        .filter(|t| match pattern.as_ref() {
+            Some(p) => Pattern::new(t.clone()) == **p,
+            None => true,
+        })
         .map(|t| TupleHistory::new(t, &targets_ref))
         .collect();
     tuples.sort_by(|a, b| a.t.cmp(&b.t));
@@ -835,20 +956,397 @@ pub fn is_open_def(
     for op_list in operations.values_mut() {
         op_list.sort_by(|a, b| a.sym.cmp(&b.sym));
     }
-    let formula = targets[0]
-        .pattern
-        .as_ref()
-        .unwrap()
-        .preprocessed_formula();
-    let start_block = Block::new(operations, tuples, targets, formula, config);
+    let formula = match targets[0].pattern.as_ref() {
+        Some(p) => p.preprocessed_formula(),
+        // Empty / unpatterned targets (e.g. random_half drawing zero rows).
+        None => formulas::true_formula(None),
+    };
+    // Strip T* so TMH/IsoType matches merge ambient (historical main.py).
+    let mut ambient_model = model.clone();
+    ambient_model
+        .relations
+        .retain(|sym, _| !sym.starts_with('T'));
+    let ambient = Arc::new(ambient_model);
+    let start_block = Block::new(operations, ambient, tuples, targets, formula, config);
     let result = match config.explore_order {
         ExploreOrder::Dfs => is_open_def_parallel_recursive(start_block),
         ExploreOrder::Bfs => is_open_def_bfs(start_block),
     };
+    crate::engines::tuple_model_hash::dump_tmh_stats_if_enabled();
     match result {
         Ok(f) if config.simplify_formula => Ok(f.simplify_ast()),
         other => other,
     }
+}
+
+fn operations_by_name(operations: &OpsMap) -> HashMap<String, Operation> {
+    let mut map = HashMap::new();
+    for list in operations.values() {
+        for op in list {
+            map.insert(op.sym.clone(), op.clone());
+        }
+    }
+    map
+}
+
+fn generate_terms(
+    operations: &OpsMap,
+    arity: usize,
+    max_depth: usize,
+) -> Vec<Term> {
+    const CAP: usize = 64;
+    let mut terms: Vec<Term> = (0..arity)
+        .map(|i| Term::Variable(Variable::from_index(i as i32)))
+        .collect();
+    for _ in 0..max_depth {
+        if terms.len() >= CAP {
+            break;
+        }
+        let snapshot = terms.clone();
+        for op_list in operations.values() {
+            for op in op_list {
+                if op.arity == 0 {
+                    let t = Term::OpTerm {
+                        sym: OpSym::new(&op.sym, 0),
+                        args: vec![],
+                    };
+                    if !terms.iter().any(|x| x == &t) {
+                        terms.push(t);
+                    }
+                } else if op.arity == 1 {
+                    for a in &snapshot {
+                        let t = Term::OpTerm {
+                            sym: OpSym::new(&op.sym, 1),
+                            args: vec![a.clone()],
+                        };
+                        if !terms.iter().any(|x| x == &t) {
+                            terms.push(t);
+                            if terms.len() >= CAP {
+                                return terms;
+                            }
+                        }
+                    }
+                } else if op.arity == 2 {
+                    for a in &snapshot {
+                        for b in &snapshot {
+                            let t = Term::OpTerm {
+                                sym: OpSym::new(&op.sym, 2),
+                                args: vec![a.clone(), b.clone()],
+                            };
+                            if !terms.iter().any(|x| x == &t) {
+                                terms.push(t);
+                                if terms.len() >= CAP {
+                                    return terms;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    terms
+}
+
+fn eval_term_on_tuple(
+    term: &Term,
+    ops: &HashMap<String, Operation>,
+    tup: &[i64],
+) -> Option<i64> {
+    let mut env = HashMap::new();
+    for (i, &x) in tup.iter().enumerate() {
+        env.insert(Variable::from_index(i as i32), x);
+    }
+    term.evaluate(ops, &env).ok()
+}
+
+fn atom_holds_on_tuple(
+    phi: &Formula,
+    ops: &HashMap<String, Operation>,
+    tup: &[i64],
+) -> bool {
+    match phi {
+        Formula::True(_) => true,
+        Formula::False(_) => false,
+        Formula::Eq(t1, t2) => {
+            match (
+                eval_term_on_tuple(t1, ops, tup),
+                eval_term_on_tuple(t2, ops, tup),
+            ) {
+                (Some(a), Some(b)) => a == b,
+                _ => false,
+            }
+        }
+        Formula::Neg(inner) => !atom_holds_on_tuple(inner, ops, tup),
+        _ => false,
+    }
+}
+
+/// When the HIT generator finishes on an impure block, partition by
+/// compact IsoType. Same type with mixed in/out target => `None` (NOT).
+/// Multiple pure types => one child per class.
+///
+/// Order: index all in-R first, then scan out-R so a mixed IsoType aborts early.
+/// Optional env knobs: `HIT_TMH_CLOSURE_CACHE`, `HIT_TMH_PROXY`, `HIT_TMH_RAYON`.
+fn try_split_finished_impure(block: &Block) -> Option<Vec<Block>> {
+    use crate::engines::tuple_model_hash::{
+        cheap_proxy, classify_compact, note_finished_impure, note_proxy_full, note_proxy_reject,
+        tmh_proxy_enabled, tmh_rayon_threads, CompactIsoType,
+    };
+    note_finished_impure();
+    use std::collections::{HashMap, HashSet};
+
+    struct ClassInfo {
+        id: usize,
+        has_in: bool,
+        has_out: bool,
+        members: Vec<usize>,
+    }
+
+    let mut in_idxs: Vec<usize> = Vec::new();
+    let mut out_idxs: Vec<usize> = Vec::new();
+    for (i, th) in block.tuples.iter().enumerate() {
+        if th.in_target {
+            in_idxs.push(i);
+        } else {
+            out_idxs.push(i);
+        }
+    }
+
+    let cache = if crate::engines::tuple_model_hash::tmh_closure_cache_enabled() {
+        Some(&block.tmh_cache)
+    } else {
+        None
+    };
+
+    let use_proxy = tmh_proxy_enabled();
+    let mut in_proxies: HashSet<u64> = HashSet::new();
+    let proxies: Vec<Option<u64>> = if use_proxy {
+        block
+            .tuples
+            .iter()
+            .map(|th| Some(cheap_proxy(&block.ambient, &th.t)))
+            .collect()
+    } else {
+        vec![None; block.tuples.len()]
+    };
+    if use_proxy {
+        for &idx in &in_idxs {
+            in_proxies.insert(proxies[idx].unwrap());
+        }
+    }
+
+    // Precompute compacts for in-R (optional Rayon).
+    let rayon_n = tmh_rayon_threads();
+    let in_compacts: Vec<(usize, CompactIsoType)> = if rayon_n > 1 && in_idxs.len() > 1 {
+        use rayon::prelude::*;
+        in_idxs
+            .par_iter()
+            .map(|&idx| {
+                (
+                    idx,
+                    classify_compact(&block.ambient, &block.tuples[idx].t, cache),
+                )
+            })
+            .collect()
+    } else {
+        in_idxs
+            .iter()
+            .map(|&idx| {
+                (
+                    idx,
+                    classify_compact(&block.ambient, &block.tuples[idx].t, cache),
+                )
+            })
+            .collect()
+    };
+
+    let mut classes: HashMap<CompactIsoType, ClassInfo> = HashMap::new();
+    let mut n_classes = 0usize;
+
+    for (idx, compact) in in_compacts {
+        match classes.get_mut(&compact) {
+            Some(info) => {
+                if info.has_out {
+                    return None;
+                }
+                info.has_in = true;
+                info.members.push(idx);
+            }
+            None => {
+                classes.insert(
+                    compact,
+                    ClassInfo {
+                        id: n_classes,
+                        has_in: true,
+                        has_out: false,
+                        members: vec![idx],
+                    },
+                );
+                n_classes += 1;
+            }
+        }
+    }
+
+    // Out-R: with proxy, check overlapping proxies first (NOT candidates); novel proxies after.
+    let (out_overlap, out_novel): (Vec<usize>, Vec<usize>) = if use_proxy {
+        let mut o = Vec::new();
+        let mut n = Vec::new();
+        for &idx in &out_idxs {
+            if in_proxies.contains(&proxies[idx].unwrap()) {
+                o.push(idx);
+            } else {
+                n.push(idx);
+            }
+        }
+        (o, n)
+    } else {
+        (out_idxs.clone(), Vec::new())
+    };
+
+    for &idx in out_overlap.iter().chain(out_novel.iter()) {
+        if use_proxy {
+            if in_proxies.contains(&proxies[idx].unwrap()) {
+                note_proxy_full();
+            } else {
+                note_proxy_reject();
+            }
+        }
+        let compact = classify_compact(&block.ambient, &block.tuples[idx].t, cache);
+        match classes.get_mut(&compact) {
+            Some(info) => {
+                if info.has_in {
+                    return None;
+                }
+                info.has_out = true;
+                info.members.push(idx);
+            }
+            None => {
+                classes.insert(
+                    compact,
+                    ClassInfo {
+                        id: n_classes,
+                        has_in: false,
+                        has_out: true,
+                        members: vec![idx],
+                    },
+                );
+                n_classes += 1;
+            }
+        }
+    }
+
+    if n_classes <= 1 {
+        return None;
+    }
+
+    let mut by_class: Vec<Vec<usize>> = vec![Vec::new(); n_classes];
+    for info in classes.into_values() {
+        by_class[info.id] = info.members;
+    }
+
+    let ops = operations_by_name(&block.operations);
+    let phi = if block.config.synthesize_formula {
+        find_shallow_separator(
+            &ops,
+            block.arity,
+            &block.tuples[by_class[0][0]].t,
+            &block.tuples[by_class[1][0]].t,
+        )
+    } else {
+        None
+    };
+
+    let mut children = Vec::with_capacity(n_classes);
+    for members in by_class {
+        let tuples: Vec<TupleHistory> = members
+            .into_iter()
+            .map(|i| block.tuples[i].clone())
+            .collect();
+        let formula = if block.config.synthesize_formula {
+            match &phi {
+                Some(atom) => {
+                    let holds = atom_holds_on_tuple(atom, &ops, &tuples[0].t);
+                    if holds {
+                        block.formula.clone().and_formula(atom)
+                    } else {
+                        block.formula.clone().and_formula(&atom.neg())
+                    }
+                }
+                None => block.formula.clone(),
+            }
+        } else if tuples[0].in_target {
+            formulas::true_formula(None)
+        } else {
+            formulas::false_formula(None)
+        };
+        children.push(Block::new_shared(
+            Arc::clone(&block.operations),
+            Arc::clone(&block.ambient),
+            tuples,
+            block.targets.clone(),
+            formula,
+            block.config,
+            Arc::clone(&block.tmh_cache),
+        ));
+    }
+    Some(children)
+}
+
+/// Prefer shallow term equalities that separate `tin` from `tout` (depth ≤ 2).
+fn find_shallow_separator(
+    ops: &HashMap<String, Operation>,
+    arity: usize,
+    tin: &[i64],
+    tout: &[i64],
+) -> Option<Formula> {
+    // Rebuild ops map by arity for generate_terms.
+    let mut by_ar: OpsMap = BTreeMap::new();
+    for op in ops.values() {
+        by_ar.entry(op.arity).or_default().push(op.clone());
+    }
+    for depth in 1..=2 {
+        let terms = generate_terms(&by_ar, arity, depth);
+        let mut indexed: Vec<(usize, &Term)> = terms.iter().enumerate().collect();
+        indexed.sort_by_key(|(_, t)| t.grade());
+        for (ii, (_, ti)) in indexed.iter().enumerate() {
+            for (_, tj) in indexed.iter().take(ii) {
+                let Some(va1) = eval_term_on_tuple(ti, ops, tin) else {
+                    continue;
+                };
+                let Some(va2) = eval_term_on_tuple(tj, ops, tin) else {
+                    continue;
+                };
+                let Some(vb1) = eval_term_on_tuple(ti, ops, tout) else {
+                    continue;
+                };
+                let Some(vb2) = eval_term_on_tuple(tj, ops, tout) else {
+                    continue;
+                };
+                if (va1 == va2) != (vb1 == vb2) {
+                    return Some(formulas::eq((*ti).clone(), (*tj).clone()));
+                }
+            }
+        }
+    }
+    None
+}
+
+fn handle_finished_impure(block: &Block) -> Result<Vec<Block>, Counterexample> {
+    if let Some(children) = try_split_finished_impure(block) {
+        return Ok(children);
+    }
+    Err(Counterexample(
+        block.tuples.iter().map(|th| th.t.clone()).collect(),
+    ))
+}
+
+/// Impure block should run TMH/IsoType now (generator finished or eager policy).
+fn should_run_isotype_split(block: &Block) -> bool {
+    if block.is_all_in_targets() || block.is_disjunt_to_targets() {
+        return false;
+    }
+    block.finished() || block.config.eager_isotype_on_impure
 }
 
 /// Exploración BFS: cola de bloques; combina fórmulas de hojas con OR.
@@ -866,10 +1364,19 @@ fn is_open_def_bfs(start: Block) -> Result<Formula, Counterexample> {
             leaf_formulas.push(formulas::false_formula(None));
             continue;
         }
-        if block.finished() {
-            return Err(Counterexample(
-                block.tuples.iter().map(|th| th.t.clone()).collect(),
-            ));
+        if should_run_isotype_split(&block) {
+            match handle_finished_impure(&block)? {
+                children if children.len() == 1 => {
+                    queue.push_back(children.into_iter().next().unwrap());
+                    continue;
+                }
+                children => {
+                    for child in children {
+                        queue.push_back(child);
+                    }
+                    continue;
+                }
+            }
         }
         match block.step() {
             Err(ce) => return Err(ce),
@@ -887,9 +1394,42 @@ fn is_open_def_bfs(start: Block) -> Result<Formula, Counterexample> {
     Ok(combined)
 }
 
-/// Explora el árbol de bloques en paralelo cuando hay varios hijos; con un solo hijo
-/// sigue en bucle para evitar desbordamiento de pila en cadenas largas.
+fn combine_child_formulas(results: Vec<Result<Formula, Counterexample>>) -> Result<Formula, Counterexample> {
+    if let Some(ce) = results.iter().find_map(|r| r.as_ref().err()) {
+        return Err(ce.clone());
+    }
+    let mut combined = formulas::false_formula(None);
+    for r in results {
+        combined = combined.or_formula(&r.unwrap());
+    }
+    Ok(combined)
+}
+
+/// Explore sibling blocks: serial by default (`max_rayon_children == 1`);
+/// Rayon only when `1 < n <= max_rayon_children`.
+fn explore_children(children: Vec<Block>, max_rayon_children: usize) -> Result<Formula, Counterexample> {
+    let n = children.len();
+    if n == 0 {
+        return Ok(formulas::false_formula(None));
+    }
+    if max_rayon_children > 1 && n > 1 && n <= max_rayon_children {
+        let results: Vec<_> = children
+            .into_par_iter()
+            .map(is_open_def_parallel_recursive)
+            .collect();
+        return combine_child_formulas(results);
+    }
+    let results: Vec<_> = children
+        .into_iter()
+        .map(is_open_def_parallel_recursive)
+        .collect();
+    combine_child_formulas(results)
+}
+
+/// Explora el árbol de bloques; con un solo hijo sigue en bucle (evita stack overflow).
+/// Paralelismo Rayon acotado por `HitConfig.max_rayon_children` (default 1 = serie).
 fn is_open_def_parallel_recursive(mut block: Block) -> Result<Formula, Counterexample> {
+    let max_rayon = block.config.max_rayon_children;
     loop {
         if block.is_all_in_targets() {
             return Ok(block.formula);
@@ -897,10 +1437,13 @@ fn is_open_def_parallel_recursive(mut block: Block) -> Result<Formula, Counterex
         if block.is_disjunt_to_targets() {
             return Ok(formulas::false_formula(None));
         }
-        if block.finished() {
-            return Err(Counterexample(
-                block.tuples.iter().map(|th| th.t.clone()).collect(),
-            ));
+        if should_run_isotype_split(&block) {
+            let children = handle_finished_impure(&block)?;
+            if children.len() == 1 {
+                block = children.into_iter().next().unwrap();
+                continue;
+            }
+            return explore_children(children, max_rayon);
         }
         match block.step() {
             Err(ce) => return Err(ce),
@@ -909,22 +1452,7 @@ fn is_open_def_parallel_recursive(mut block: Block) -> Result<Formula, Counterex
                     block = children.into_iter().next().unwrap();
                     continue;
                 }
-                let results: Vec<_> = children
-                    .into_par_iter()
-                    .map(is_open_def_parallel_recursive)
-                    .collect();
-                if let Some(ce) = results.iter().find_map(|r| r.as_ref().err()) {
-                    return Err(ce.clone());
-                }
-                let formulas: Vec<Formula> = results
-                    .into_iter()
-                    .map(|r| r.unwrap())
-                    .collect();
-                let mut combined = formulas::false_formula(None);
-                for f in formulas {
-                    combined = combined.or_formula(&f);
-                }
-                return Ok(combined);
+                return explore_children(children, max_rayon);
             }
         }
     }
@@ -947,10 +1475,22 @@ fn is_open_def_iterative(block: &mut Block) -> Result<Formula, Counterexample> {
                     stack.push(StackItem::Result(b.formula));
                 } else if b.is_disjunt_to_targets() {
                     stack.push(StackItem::Result(formulas::false_formula(None)));
-                } else if b.finished() {
-                    return Err(Counterexample(
-                        b.tuples.iter().map(|th| th.t.clone()).collect(),
-                    ));
+                } else if should_run_isotype_split(&b) {
+                    match handle_finished_impure(&b) {
+                        Ok(children) => {
+                            if children.len() == 1 {
+                                stack.push(StackItem::Block(
+                                    children.into_iter().next().unwrap(),
+                                ));
+                            } else {
+                                accumulate.push((children.clone(), vec![]));
+                                for child in children.into_iter().rev() {
+                                    stack.push(StackItem::Block(child));
+                                }
+                            }
+                        }
+                        Err(ce) => return Err(ce),
+                    }
                 } else {
                     let mut bmut = b;
                     match bmut.step() {
@@ -991,6 +1531,64 @@ fn is_open_def_iterative(block: &mut Block) -> Result<Formula, Counterexample> {
         }
     }
     Ok(formulas::false_formula(None))
+}
+
+/// Cap on IsoType generation steps per tuple (safety against runaway generators).
+pub const ISOTYPE_MAX_STEPS: u64 = 50_000;
+
+/// Equality fingerprint of the QF IsoType of `row`, using the same term generator
+/// as HIT (`IndicesTupleGenerator` + `TupleHistory`) until the generator finishes.
+///
+/// The key is independent of absolute element labels: it records history length and
+/// which pairs of history positions are equal. Two tuples with the same key agree
+/// on all term equalities produced by the HIT generation schedule.
+pub fn qf_isotype_equality_key(model: &Model, row: &[i64]) -> Vec<u8> {
+    let arity = row.len();
+    let mut operations: BTreeMap<usize, Vec<Operation>> = BTreeMap::new();
+    for op in model.operations.values() {
+        operations.entry(op.arity).or_default().push(op.clone());
+    }
+    for op_list in operations.values_mut() {
+        op_list.sort_by(|a, b| a.sym.cmp(&b.sym));
+    }
+    let mut th = TupleHistory::new(row.to_vec(), &[]);
+    let mut gen = IndicesTupleGenerator::new(Arc::new(operations), arity, vec![], (0..arity).collect());
+    let mut steps = 0u64;
+    while !gen.finished {
+        steps += 1;
+        if steps > ISOTYPE_MAX_STEPS {
+            break;
+        }
+        match gen.step() {
+            None => {
+                gen.finished = true;
+                break;
+            }
+            Some((op, ti)) => {
+                let _idx = th.step(&op, &ti);
+                if th.has_generated {
+                    gen.hubo_nuevo();
+                }
+            }
+        }
+    }
+    isotype_equality_bytes(&th.history)
+}
+
+fn isotype_equality_bytes(history: &[i64]) -> Vec<u8> {
+    let n = history.len();
+    let mut key = Vec::with_capacity(4 + n * (n.saturating_sub(1)));
+    key.extend_from_slice(&(n as u32).to_le_bytes());
+    for i in 0..n {
+        for j in (i + 1)..n {
+            if history[i] == history[j] {
+                key.push(1);
+            } else {
+                key.push(0);
+            }
+        }
+    }
+    key
 }
 
 #[cfg(test)]
@@ -1132,7 +1730,8 @@ mod tests {
         let targets = vec![target];
         let th = TupleHistory::new(vec![0, 0], &[&targets[0]]);
         let f = targets[0].pattern.as_ref().unwrap().preprocessed_formula();
-        let block = Block::new(ops, vec![th], targets, f, HitConfig::default());
+        let ambient = Arc::new(Model::new(vec![0, 1], HashMap::new(), HashMap::new()));
+        let block = Block::new(ops, ambient, vec![th], targets, f, HitConfig::default());
         assert!(block.is_all_in_targets());
     }
 
@@ -1142,7 +1741,15 @@ mod tests {
         let targets = vec![target.clone()];
         let th = TupleHistory::new(vec![0, 0], &[&target]);
         let f = target.pattern.as_ref().unwrap().preprocessed_formula();
-        let block = Block::new(BTreeMap::new(), vec![th], targets, f, HitConfig::default());
+        let ambient = Arc::new(Model::new(vec![0, 1], HashMap::new(), HashMap::new()));
+        let block = Block::new(
+            BTreeMap::new(),
+            ambient,
+            vec![th],
+            targets,
+            f,
+            HitConfig::default(),
+        );
         assert!(block.is_disjunt_to_targets());
     }
 
@@ -1151,5 +1758,34 @@ mod tests {
         let ce = Counterexample(vec![vec![1], vec![2], vec![3]]);
         let s = format!("{:?}", ce);
         assert!(s.contains("1"));
+    }
+
+    #[test]
+    fn full_target_pattern_pieces_accept_immediately() {
+        // R = A^2 after preprocess: each equality-pattern piece is complete, so
+        // pattern-filtered initial blocks are full and accept without TMH/stepping.
+        let mut op = Operation::new("f", 2);
+        for a in 0..4i64 {
+            for b in 0..4i64 {
+                op.add(vec![a, b, (a + b) % 4]);
+            }
+        }
+        let mut operations = HashMap::new();
+        operations.insert("f".into(), op);
+        let mut target = Relation::new("T0", 2);
+        for a in 0..4i64 {
+            for b in 0..4i64 {
+                target.add(vec![a, b]);
+            }
+        }
+        let pieces = crate::preprocessing::preprocesamiento2(&target);
+        assert!(pieces.len() >= 2, "expected diagonal + off-diagonal pieces");
+        let model = Model::new((0..4).collect(), HashMap::new(), operations);
+        let mut cfg = HitConfig::default();
+        cfg.synthesize_formula = false;
+        for piece in pieces {
+            let f = is_open_def(&model, vec![piece], cfg).expect("full pattern piece definable");
+            let _ = f;
+        }
     }
 }

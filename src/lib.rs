@@ -14,7 +14,10 @@ pub mod hit_cuda;
 pub use first_order::{formulas, models, relops};
 pub use parser::{parse_model, ParserError};
 pub use preprocessing::{preprocesamiento2, Pattern};
-pub use hit::{is_open_def, Counterexample, ExploreOrder, HitConfig, reset_run_stats, run_stats_snapshot};
+pub use hit::{
+    is_open_def, Counterexample, ExploreOrder, HitConfig, reset_run_stats, run_stats_snapshot,
+    qf_isotype_equality_key,
+};
 pub use strategy::{
     extract_features, select_strategy, select_strategy_explained, StrategyDecision,
 };

@@ -1,0 +1,11 @@
+model,ms,result,max_rss_mib
+random_magma_n32_k2_nondef_mix_i0.model,338.667,DEFINABLE,30.6
+random_magma_n32_k2_nondef_mix_i1.model,277.601,DEFINABLE,30.6
+random_magma_n32_k2_nondef_mix_i2.model,218.847,DEFINABLE,30.6
+random_magma_n32_k2_nondef_mix_i3.model,296.379,DEFINABLE,30.6
+random_magma_n32_k2_nondef_mix_i4.model,364.026,DEFINABLE,31.0
+random_magma_n32_k2_random_half_i0.model,264.541,NOT_DEFINABLE,31.0
+random_magma_n32_k2_random_half_i1.model,256.592,NOT_DEFINABLE,31.0
+random_magma_n32_k2_random_half_i2.model,228.556,DEFINABLE,31.0
+random_magma_n32_k2_random_half_i3.model,160.274,DEFINABLE,31.0
+random_magma_n32_k2_random_half_i4.model,316.948,DEFINABLE,31.0

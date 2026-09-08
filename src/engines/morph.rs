@@ -73,15 +73,35 @@ fn split_by_orbits(
             .cloned()
             .unwrap_or_else(|| orbit_key(row, &arrows))
     });
-    Ok(EngineOutcome {
-        definable: partition.is_target_pure(target),
-        fragment: fragment.into(),
-        engine: engine.into(),
-    })
+    let definable = partition.is_target_pure(target);
+    let mut out = EngineOutcome::basic(definable, fragment, engine);
+    if definable {
+        // A1/N5a: canonical (lex-min) positive End-orbit representatives.
+        let mut reps: Vec<String> = Vec::new();
+        for block in &partition.blocks {
+            if block.is_empty() {
+                continue;
+            }
+            let rep = block.iter().min().expect("non-empty block");
+            if crate::engines::partition::target_accepts_row(target, rep) {
+                let cells: Vec<String> = rep.iter().map(|x| x.to_string()).collect();
+                reps.push(format!("[{}]", cells.join(",")));
+            }
+        }
+        reps.sort();
+        out.witness_sketch = Some(format!("{{\"positive_orbit_reps\":[{}]}}", reps.join(",")));
+    }
+    Ok(out)
 }
 
 pub fn check_morph_split(model: &Model, target: &Relation) -> Result<EngineOutcome, String> {
     split_by_orbits(model, target, false, "ep", "morph_split")
+}
+
+pub fn check_ep_cert(model: &Model, target: &Relation) -> Result<EngineOutcome, String> {
+    let mut out = split_by_orbits(model, target, false, "ep", "cert")?;
+    out.engine = "cert".into();
+    Ok(out)
 }
 
 pub fn check_embedding_split(model: &Model, target: &Relation) -> Result<EngineOutcome, String> {
@@ -90,4 +110,131 @@ pub fn check_embedding_split(model: &Model, target: &Relation) -> Result<EngineO
 
 pub fn check_qf_merge(model: &Model, target: &Relation) -> Result<EngineOutcome, String> {
     split_by_orbits(model, target, true, "qf", "iso_merge")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::engines::dispatch::{check_engine, EngineKind, FragmentKind};
+    use crate::parser::parse_model;
+    use std::path::Path;
+
+    #[test]
+    fn retrombo_nodef_sinpura_morph_and_hom_type_not_definable() {
+        let path = Path::new("../fopy/tests/fixtures/models/retrombo_nodef_sinpura.model");
+        let model = parse_model(Some(path), true).expect("parse");
+        let target = model
+            .relations
+            .values()
+            .find(|r| r.sym.starts_with('T'))
+            .expect("T")
+            .clone();
+        let morph = check_morph_split(&model, &target).unwrap();
+        assert!(!morph.definable, "morph_split must reject mixed End-orbit");
+        let hom = check_engine(
+            &model,
+            &target,
+            FragmentKind::Ep,
+            EngineKind::HomType,
+            2,
+            1,
+        )
+        .unwrap();
+        assert!(!hom.definable, "hom_type must align with morph_split");
+        assert_eq!(hom.engine, "hom_type");
+    }
+
+    #[test]
+    fn retrombo_nodef_morph_and_hom_type_not_definable() {
+        let path = Path::new("../fopy/tests/fixtures/models/retrombo_nodef.model");
+        let model = parse_model(Some(path), true).expect("parse");
+        let target = model
+            .relations
+            .values()
+            .find(|r| r.sym.starts_with('T'))
+            .expect("T")
+            .clone();
+        assert!(!check_morph_split(&model, &target).unwrap().definable);
+        let hom = check_engine(
+            &model,
+            &target,
+            FragmentKind::Ep,
+            EngineKind::HomType,
+            2,
+            1,
+        )
+        .unwrap();
+        assert!(!hom.definable);
+    }
+
+    #[test]
+    fn retrombo_nodef_ktypes_hybrid_via_hom_type_not_definable() {
+        let path = Path::new("../fopy/tests/fixtures/models/retrombo_nodef.model");
+        let model = parse_model(Some(path), true).expect("parse");
+        let target = model
+            .relations
+            .values()
+            .find(|r| r.sym.starts_with('T'))
+            .expect("T")
+            .clone();
+        assert!(!model.operations.is_empty());
+        assert!(model.universe.len() <= 6);
+        let kt = check_engine(
+            &model,
+            &target,
+            FragmentKind::Ep,
+            EngineKind::Ktypes,
+            2,
+            1,
+        )
+        .unwrap();
+        assert!(!kt.definable, "M1: ktypes must not silently over-accept");
+        assert_eq!(kt.engine, "ktypes_via_hom_type");
+    }
+
+    #[test]
+    fn ep_cert_emits_sketch_on_diagonal() {
+        use crate::first_order::relops::Relation;
+        use std::collections::HashMap;
+        let universe = vec![0, 1, 2];
+        let target = Relation::new("T", 2).with_tuples(vec![
+            vec![0, 0],
+            vec![1, 1],
+            vec![2, 2],
+        ]);
+        let model = crate::first_order::models::Model::new(
+            universe,
+            HashMap::new(),
+            HashMap::new(),
+        );
+        let cert = check_ep_cert(&model, &target).unwrap();
+        assert!(cert.definable, "diagonal should be End-orbit pure");
+        assert_eq!(cert.engine, "cert");
+        let sketch = cert.witness_sketch.expect("A1 sketch");
+        assert!(sketch.contains("positive_orbit_reps"));
+    }
+
+    #[test]
+    fn ep_cert_rejects_retrombo_nodef() {
+        let path = Path::new("../fopy/tests/fixtures/models/retrombo_nodef.model");
+        let model = parse_model(Some(path), true).expect("parse");
+        let target = model
+            .relations
+            .values()
+            .find(|r| r.sym.starts_with('T'))
+            .expect("T")
+            .clone();
+        let cert = check_engine(
+            &model,
+            &target,
+            FragmentKind::Ep,
+            EngineKind::Cert,
+            2,
+            1,
+        )
+        .unwrap();
+        assert!(!cert.definable);
+        assert_eq!(cert.engine, "cert");
+        assert!(cert.witness_sketch.is_none());
+    }
 }

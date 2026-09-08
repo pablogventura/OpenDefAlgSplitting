@@ -1,0 +1,11 @@
+model,hit_old,hit_new,merge,agree_merge,ms
+random_magma_n32_k2_nondef_mix_i0.model,TIMEOUT,DEFINABLE,DEFINABLE,1,295.944
+random_magma_n32_k2_nondef_mix_i1.model,TIMEOUT,DEFINABLE,DEFINABLE,1,269.772
+random_magma_n32_k2_nondef_mix_i2.model,TIMEOUT,DEFINABLE,DEFINABLE,1,267.645
+random_magma_n32_k2_nondef_mix_i3.model,TIMEOUT,DEFINABLE,DEFINABLE,1,267.226
+random_magma_n32_k2_nondef_mix_i4.model,TIMEOUT,DEFINABLE,DEFINABLE,1,267.227
+random_magma_n32_k2_random_half_i0.model,TIMEOUT,DEFINABLE,DEFINABLE,1,278.295
+random_magma_n32_k2_random_half_i1.model,TIMEOUT,DEFINABLE,DEFINABLE,1,271.415
+random_magma_n32_k2_random_half_i2.model,TIMEOUT,DEFINABLE,DEFINABLE,1,267.621
+random_magma_n32_k2_random_half_i3.model,TIMEOUT,DEFINABLE,DEFINABLE,1,275.234
+random_magma_n32_k2_random_half_i4.model,TIMEOUT,DEFINABLE,DEFINABLE,1,267.414

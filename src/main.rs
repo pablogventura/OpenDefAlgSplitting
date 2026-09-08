@@ -128,6 +128,10 @@ fn main() {
             opts.hit_config,
             opts.ablation_csv,
             opts.use_auto,
+            &opts.fragment,
+            &opts.engine,
+            opts.max_depth,
+            opts.max_k,
         );
         return;
     }
@@ -185,6 +189,38 @@ fn main() {
             .filter_map(|s| model.relations.remove(s))
             .collect();
         targets.sort_by(|a, b| a.sym.cmp(&b.sym));
+        // Historical MergingAlgorithm: all T* jointly (IsoType + polarity).
+        if frag == opendefalgsplitting::FragmentKind::Qf
+            && eng == opendefalgsplitting::EngineKind::Merge
+        {
+            let refs: Vec<_> = targets.iter().collect();
+            match opendefalgsplitting::engines::megahit::check_qf_megahit_merge_multi(
+                &model, &refs,
+            ) {
+                Ok(out) => {
+                    if out.definable {
+                        println!("{}", "DEFINABLE".green());
+                    } else {
+                        println!("{}", "NOT DEFINABLE".red());
+                    }
+                    let joined = targets
+                        .iter()
+                        .map(|t| t.sym.as_str())
+                        .collect::<Vec<_>>()
+                        .join(",");
+                    println!(
+                        "# meta: {{\"fragment\":\"{}\",\"engine\":\"{}\",\"target\":\"{}\"}}",
+                        out.fragment, out.engine, joined
+                    );
+                }
+                Err(e) => {
+                    eprintln!("engine error: {e}");
+                    std::process::exit(1);
+                }
+            }
+            println!("Elapsed time: {:?}", start.elapsed());
+            return;
+        }
         for target in targets {
             match check_engine(
                 &model,
@@ -351,24 +387,46 @@ fn run_bench_mode(
     hit_config: HitConfig,
     ablation_csv: bool,
     use_auto: bool,
+    fragment: &str,
+    engine: &str,
+    max_depth: usize,
+    max_k: usize,
 ) {
     if paths.is_empty() {
         eprintln!("--bench requiere al menos un archivo .model");
         std::process::exit(1);
     }
+    let frag = match FragmentKind::parse(fragment) {
+        Ok(f) => f,
+        Err(e) => {
+            eprintln!("{e}");
+            std::process::exit(1);
+        }
+    };
+    let eng = match EngineKind::parse(engine) {
+        Ok(e) => e,
+        Err(e) => {
+            eprintln!("{e}");
+            std::process::exit(1);
+        }
+    };
+    let use_partition_engine =
+        !matches!(frag, FragmentKind::Qf) || matches!(eng, EngineKind::Merge);
+
     if ablation_csv {
         println!("model,ms,steps,skipped,approx_reject,result,formula_size");
     } else {
-        println!("model\tms\tresult");
+        println!("model\tms\tresult\tengine");
     }
     for path in paths {
         let path = Path::new(path);
         let mut times_ms: Vec<f64> = Vec::with_capacity(repeat as usize);
         let mut result_str = String::new();
+        let mut engine_str = String::new();
         let mut steps = 0u64;
         let mut skipped = 0u64;
         let mut approx_r = 0u64;
-        let mut formula_size = 0usize;
+        let formula_size = 0usize;
         for _ in 0..repeat {
             let (model, targets_by_arity) = match load_model_targets(path) {
                 Ok(x) => x,
@@ -379,21 +437,71 @@ fn run_bench_mode(
             };
             reset_run_stats();
             let start = Instant::now();
-            let res = run_checker(&model, &targets_by_arity, hit_config, use_auto);
+            if use_partition_engine {
+                let mut all_ok = true;
+                let mut last_engine = String::new();
+                if matches!(frag, FragmentKind::Qf) && matches!(eng, EngineKind::Merge) {
+                    let mut flat: Vec<_> = targets_by_arity
+                        .values()
+                        .flatten()
+                        .cloned()
+                        .collect();
+                    flat.sort_by(|a, b| a.sym.cmp(&b.sym));
+                    let refs: Vec<_> = flat.iter().collect();
+                    match opendefalgsplitting::engines::megahit::check_qf_megahit_merge_multi(
+                        &model, &refs,
+                    ) {
+                        Ok(out) => {
+                            last_engine = out.engine.clone();
+                            all_ok = out.definable;
+                        }
+                        Err(e) => {
+                            eprintln!("{}: {}", path.display(), e);
+                            std::process::exit(1);
+                        }
+                    }
+                } else {
+                    let mut arities: Vec<_> = targets_by_arity.keys().cloned().collect();
+                    arities.sort();
+                    for &arity in &arities {
+                        for target in targets_by_arity.get(&arity).into_iter().flatten() {
+                            match check_engine(&model, target, frag, eng, max_depth, max_k) {
+                                Ok(out) => {
+                                    last_engine = out.engine.clone();
+                                    if !out.definable {
+                                        all_ok = false;
+                                    }
+                                }
+                                Err(e) => {
+                                    eprintln!("{}: {}", path.display(), e);
+                                    std::process::exit(1);
+                                }
+                            }
+                        }
+                    }
+                }
+                result_str = if all_ok {
+                    "DEFINABLE".into()
+                } else {
+                    "NOT_DEFINABLE".into()
+                };
+                engine_str = last_engine;
+            } else {
+                let res = run_checker(&model, &targets_by_arity, hit_config, use_auto);
+                engine_str = "hit_split".into();
+                match &res {
+                    Ok(BenchResult::Definable) => result_str = "DEFINABLE".into(),
+                    Ok(BenchResult::NotDefinable) | Err(_) => {
+                        result_str = "NOT_DEFINABLE".into()
+                    }
+                }
+            }
             let elapsed = start.elapsed().as_secs_f64() * 1000.0;
             times_ms.push(elapsed);
             let (s, _c, sk, ar) = run_stats_snapshot();
             steps = s;
             skipped = sk;
             approx_r = ar;
-            match &res {
-                Ok(BenchResult::Definable) => {
-                    result_str = "DEFINABLE".into();
-                    formula_size = 0;
-                }
-                Ok(BenchResult::NotDefinable) => result_str = "NOT_DEFINABLE".into(),
-                Err(_) => result_str = "NOT_DEFINABLE".into(),
-            }
             let _ = formula_size;
         }
         let mean = times_ms.iter().sum::<f64>() / times_ms.len() as f64;
@@ -409,11 +517,25 @@ fn run_bench_mode(
                 formula_size
             );
         } else if repeat > 1 {
-            let var = times_ms.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / times_ms.len() as f64;
+            let var =
+                times_ms.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / times_ms.len() as f64;
             let std = var.sqrt();
-            println!("{}\t{:.3}±{:.3}\t{}", path.display(), mean, std, result_str);
+            println!(
+                "{}\t{:.3}±{:.3}\t{}\t{}",
+                path.display(),
+                mean,
+                std,
+                result_str,
+                engine_str
+            );
         } else {
-            println!("{}\t{:.3}\t{}", path.display(), mean, result_str);
+            println!(
+                "{}\t{:.3}\t{}\t{}",
+                path.display(),
+                mean,
+                result_str,
+                engine_str
+            );
         }
     }
 }
@@ -543,6 +665,12 @@ Opciones:
   --repeat N                 Repeticiones en --bench (default 1)
   --ablation-csv             Con --bench, imprime CSV: model,ms,steps,skipped,result,...
 
+Env (HIT):
+  HIT_EAGER_ISOTYPE=0         Desactiva IsoType/TMH inmediato en bloques impuros
+  HIT_MAX_RSS_MIB=N          Tope blando de RSS (KiB internos = N*1024)
+  HIT_TMH_STATS=1            Contadores TMH / finished_impure en stderr
+  HIT_TMH_* / HIT_PRE_FINISHED  Ver docs/TMH_FACTORS.md
+
 Subcomando StoneGral (Alg. 1-2):
   {name} stone-filter --spec FIXTURE.json [--json]
 
@@ -630,6 +758,12 @@ fn parse_args(args: &[String]) -> CliOptions {
     let mut ig_sample = defaults.ig_sample;
     let mut skip_useless = defaults.skip_useless_candidates;
     let mut approx_precheck = false;
+    if matches!(
+        std::env::var("HIT_PRE_FINISHED").ok().as_deref(),
+        Some("approx") | Some("APPROX")
+    ) {
+        approx_precheck = true;
+    }
     let mut simplify = false;
     let mut bfs = false;
     let mut max_steps: Option<u64> = None;
@@ -748,6 +882,10 @@ fn parse_args(args: &[String]) -> CliOptions {
         paths.truncate(1);
     }
     let use_auto = !no_auto && !strategy_manual;
+    let max_rss_kib = std::env::var("HIT_MAX_RSS_MIB")
+        .ok()
+        .and_then(|s| s.parse::<u64>().ok())
+        .map(|mib| mib.saturating_mul(1024));
     let config = HitConfig {
         use_information_gain: use_ig,
         ig_sample,
@@ -761,6 +899,13 @@ fn parse_args(args: &[String]) -> CliOptions {
             ExploreOrder::Bfs
         } else {
             ExploreOrder::Dfs
+        },
+        max_rayon_children: 1,
+        synthesize_formula: !bench_mode,
+        max_rss_kib,
+        eager_isotype_on_impure: match std::env::var("HIT_EAGER_ISOTYPE").ok().as_deref() {
+            Some("0") | Some("false") | Some("FALSE") | Some("no") | Some("NO") => false,
+            _ => true,
         },
     };
     CliOptions {

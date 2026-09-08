@@ -9,7 +9,9 @@ CSV="$OUT_DIR/results_extended.csv"
 LOG="$OUT_DIR/extended_run.log"
 
 cd "$ROOT"
-cargo build --release
+if [[ ! -x "$BIN" ]]; then
+  cargo build --release
+fi
 
 # Disponibilidad de RAM (evitar OOM en modelos grandes)
 avail_kb=$(awk '/MemAvailable:/ {print $2}' /proc/meminfo)
@@ -145,4 +147,14 @@ else
 fi
 
 echo "CSV -> $CSV" | tee -a "$LOG"
-python3 "$ROOT/scripts/analyze_ablation.py" "$CSV" | tee "$OUT_DIR/analysis_extended.txt"
+# shellcheck source=/dev/null
+if [[ -f "$ROOT/scripts/ccad/common.env.sh" ]]; then
+  source "$ROOT/scripts/ccad/common.env.sh"
+  ccad_analyze_ablation_csv "$CSV" "$OUT_DIR/analysis_extended.txt" | tee -a "$LOG"
+else
+  if command -v python3 >/dev/null 2>&1; then
+    python3 "$ROOT/scripts/analyze_ablation.py" "$CSV" | tee "$OUT_DIR/analysis_extended.txt"
+  else
+    echo "WARN: python3 not found; skipping analysis (CSV is complete)." | tee -a "$LOG"
+  fi
+fi
