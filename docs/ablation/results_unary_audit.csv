@@ -1,0 +1,86 @@
+model,target,arity,unary_decision,has_nonunary_ops,would_early_exit,reason
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/16_T3_4_0.model,T0|0|1|2|a3,3,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/16_T3_4_0.model,"T0|0|1,2|a2",2,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/algebra.model,"T0|0,1|a1",1,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/cadena100.model,T0|0|1|a2,2,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/cadena100.model,"T0|0,1|a1",1,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/cadena100con2f.model,T0|0|1|a2,2,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/cadena100con2f.model,"T0|0,1|a1",1,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/cadena20.model,T0|0|1|2|3|a4,4,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/cadena4.model,"T0|0|1,2|a2",2,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/cadena4.model,"T0|0,2|1|a2",2,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/cadena4.model,T0|0|1|2|a3,3,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/cadena4.model,"T0|0,1,2|a1",1,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/cadena4.model,"T0|0,1|2|a2",2,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/cadena5.model,"T0|0|1,2,3|a2",2,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/cadena5.model,T0|0|1|2|3|a4,4,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/cadena5.model,"T0|0|1,3|2|a3",3,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/cadena5.model,"T0|0,2,3|1|a2",2,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/cadena5.model,"T0|0,1|2,3|a2",2,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/cadena5.model,"T0|0,1,3|2|a2",2,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/cadena5.model,"T0|0,3|1,2|a2",2,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/cadena5.model,"T0|0,1,2|3|a2",2,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/cadena5.model,"T0|0,2|1,3|a2",2,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/cadena5.model,"T0|0|1,2|3|a3",3,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/cadena5.model,"T0|0,2|1|3|a3",3,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/cadena5.model,"T0|0,1,2,3|a1",1,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/cadena5.model,"T0|0,1|2|3|a3",3,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/cadena5.model,"T0|0,3|1|2|a3",3,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/cadena5.model,"T0|0|1|2,3|a3",3,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/estres_paralelo.model,T0|0|1|a2,2,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/estres_paralelo.model,"T0|0,1|a1",1,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/gigante.model,T0|0|1|a2,2,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/gigante.model,"T0|0,1|a1",1,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/malvada.model,"T0|0,1|a1",1,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/malvada.model,T0|0|1|a2,2,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/miprueba.model,T0|0|1|a2,2,Skip,false,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/modelomagico.model,T0|0|1|2|a3,3,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/modelomuchomassimple.model,T0|0|1|2|a3,3,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/modeloqueanda.model,T0|0|1|2|a3,3,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/modeloquenoandanuevo.model,"T0|0,2|1|a2",2,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/modeloquenoandanuevo.model,T0|0|1|2|a3,3,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/modeloquenoandanuevo.model,"T0|0|1,2|a2",2,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/modeloquenoandanuevo.model,"T0|0,1|2|a2",2,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/modeloquenoandanuevosimple.model,"T0|0,1|2|a2",2,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/modeloquenoandanuevosimple.model,"T0|0|1,2|a2",2,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/modelosexperimento.model,T0|0|1|2|a3,3,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/modelosexperimentomassimple.model,T0|0|1|2|a3,3,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/modelosimplequefalla.model,T0|0|1|2|a3,3,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/modelotragico.model,"T0|0,1|2|a2",2,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/modelotragicobinario.model,T0|0|1|a2,2,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/msimple.model,T0|0|1|a2,2,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/p0_d0.0625_a2_u30_q5.model,"T0|0,1|a1",1,Definable,false,true,unary no-ops: R=A (Lean qfDefinable_unary_noFunctions)
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/p0_d0.0625_a2_u30_q5.model,T0|0|1|a2,2,Skip,false,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/posetrombo.model,,0,NoTargets,false,false,no T... relations
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/retrombo.model,"T0|0,1|a1",1,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/retrombo.model,T0|0|1|a2,2,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/retrombo2.model,T0|0|1|a2,2,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/retrombo2.model,T1|0|a1,1,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/retrombo2.model,"T0|0,1|a1",1,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/retrombo3.model,"T0|0|1,2|a2",2,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/retrombo3.model,"T0|0,1|2|a2",2,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/retrombo3.model,"T0|0,2|1|a2",2,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/retrombo3.model,T0|0|1|2|a3,3,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/retrombo3.model,"T0|0,1,2|a1",1,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/retrombo_incomparables.model,T0|0|1|a2,2,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/retrombo_incomparables_iguales.model,T0|0|1|a2,2,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/retrombo_incomparables_iguales.model,"T0|0,1|a1",1,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/retrombo_nodef.model,T0|0|1|a2,2,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/retrombo_nodef_sinpura.model,"T0|0,1|a1",1,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/retromboconstantes.model,"T0|0,1|a1",1,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/romboconinfimo.model,,0,NoTargets,false,false,no T... relations
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/sufrir.model,T0|0|1|a2,2,Skip,false,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/suma4.model,"T0|0,1|a1",1,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/test1.model,T0|0|1|2|a3,3,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/test2.model,T0|0|1|a2,2,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/test2.model,"T0|0,1|a1",1,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/unary_cycle3_partial.model,T0|0|a1,1,Definable,false,true,unary fingerprint counts match (Castellano Cor.13)
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/unary_empty_noops.model,,0,NoTargets,false,false,no T... relations
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/unary_flip_partial.model,T0|0|a1,1,Definable,false,true,unary fingerprint counts match (Castellano Cor.13)
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/unary_full_noops.model,T0|0|a1,1,Definable,false,true,unary no-ops: R=A (Lean qfDefinable_unary_noFunctions)
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/unary_partial_noops.model,T0|0|a1,1,NotDefinable,false,true,unary no-ops: R neither empty nor full
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/model_examples/unary_singleton.model,T0|0|a1,1,Definable,false,true,unary no-ops: R=A (Lean qfDefinable_unary_noFunctions)
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/testing/tests_definibilidad/fixtures/minimal.model,T0|0|a1,1,Skip,true,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/testing/tests_definibilidad/fixtures/modelo_solo_target.model,T0|0|1|a2,2,Skip,false,false,skip
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/testing/tests_definibilidad/fixtures/target_vacio.model,,0,NoTargets,false,false,no T... relations
+/home/pablo/mios/adga_tesis/OpenDefAlgSplitting/testing/tests_definibilidad/fixtures/universo_un_elemento.model,T0|0|a1,1,Skip,true,false,skip

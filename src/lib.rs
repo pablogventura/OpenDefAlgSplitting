@@ -2,6 +2,11 @@ pub mod first_order;
 pub mod parser;
 pub mod preprocessing;
 pub mod hit;
+pub mod approx;
+pub mod strategy;
+pub mod unary;
+pub mod engines;
+pub mod stone;
 
 #[cfg(feature = "cuda")]
 pub mod hit_cuda;
@@ -9,7 +14,16 @@ pub mod hit_cuda;
 pub use first_order::{formulas, models, relops};
 pub use parser::{parse_model, ParserError};
 pub use preprocessing::{preprocesamiento2, Pattern};
-pub use hit::{is_open_def, Counterexample, HitConfig};
+pub use hit::{
+    is_open_def, Counterexample, ExploreOrder, HitConfig, reset_run_stats, run_stats_snapshot,
+    qf_isotype_equality_key,
+};
+pub use strategy::{
+    extract_features, select_strategy, select_strategy_explained, StrategyDecision,
+};
+pub use unary::{audit_unary_targets, decide_unary, UnaryAuditRow, UnaryDecision};
+pub use engines::{check_engine, EngineKind, EngineOutcome, FragmentKind};
+pub use stone::{filtering_functions, FilterReport, StoneSpec};
 
 #[cfg(test)]
 mod tests {
@@ -141,18 +155,22 @@ mod tests {
             HitConfig {
                 use_information_gain: true,
                 ig_sample: Some(1),
+                ..HitConfig::default()
             },
             HitConfig {
                 use_information_gain: true,
                 ig_sample: Some(3),
+                ..HitConfig::default()
             },
             HitConfig {
                 use_information_gain: true,
                 ig_sample: Some(5),
+                ..HitConfig::default()
             },
             HitConfig {
                 use_information_gain: true,
                 ig_sample: Some(20),
+                ..HitConfig::default()
             },
         ];
         for config in &configs {

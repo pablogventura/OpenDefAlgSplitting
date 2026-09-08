@@ -183,6 +183,97 @@ pub enum Formula {
 }
 
 impl Formula {
+    /// Cantidad de nodos del AST (métrica de tamaño).
+    pub fn ast_size(&self) -> usize {
+        match self {
+            Formula::True(_) | Formula::False(_) | Formula::Eq(_, _) => 1,
+            Formula::Neg(f) => 1 + f.ast_size(),
+            Formula::And(fs) | Formula::Or(fs) => {
+                1 + fs.iter().map(|f| f.ast_size()).sum::<usize>()
+            }
+        }
+    }
+
+    /// Simplificación estructural ligera (True/False en And/Or, doble negación).
+    pub fn simplify_ast(&self) -> Formula {
+        match self {
+            Formula::True(v) => Formula::True(v.clone()),
+            Formula::False(v) => Formula::False(v.clone()),
+            Formula::Eq(a, b) => {
+                if a == b {
+                    Formula::True(a.free_vars())
+                } else {
+                    Formula::Eq(a.clone(), b.clone())
+                }
+            }
+            Formula::Neg(f) => {
+                let s = f.simplify_ast();
+                match s {
+                    Formula::True(v) => Formula::False(v),
+                    Formula::False(v) => Formula::True(v),
+                    Formula::Neg(inner) => *inner,
+                    other => Formula::Neg(Box::new(other)),
+                }
+            }
+            Formula::And(fs) => {
+                let mut out = HashSet::new();
+                let mut vars = HashSet::new();
+                for f in fs {
+                    match f.simplify_ast() {
+                        Formula::True(v) => {
+                            vars.extend(v);
+                        }
+                        Formula::False(v) => return Formula::False(v),
+                        Formula::And(inner) => {
+                            for g in inner {
+                                out.insert(g);
+                            }
+                        }
+                        other => {
+                            vars.extend(other.free_vars());
+                            out.insert(other);
+                        }
+                    }
+                }
+                if out.is_empty() {
+                    Formula::True(vars)
+                } else if out.len() == 1 {
+                    out.into_iter().next().unwrap()
+                } else {
+                    Formula::And(out)
+                }
+            }
+            Formula::Or(fs) => {
+                let mut out = HashSet::new();
+                let mut vars = HashSet::new();
+                for f in fs {
+                    match f.simplify_ast() {
+                        Formula::False(v) => {
+                            vars.extend(v);
+                        }
+                        Formula::True(v) => return Formula::True(v),
+                        Formula::Or(inner) => {
+                            for g in inner {
+                                out.insert(g);
+                            }
+                        }
+                        other => {
+                            vars.extend(other.free_vars());
+                            out.insert(other);
+                        }
+                    }
+                }
+                if out.is_empty() {
+                    Formula::False(vars)
+                } else if out.len() == 1 {
+                    out.into_iter().next().unwrap()
+                } else {
+                    Formula::Or(out)
+                }
+            }
+        }
+    }
+
     pub fn free_vars(&self) -> HashSet<Variable> {
         match self {
             Formula::True(v) | Formula::False(v) => v.clone(),

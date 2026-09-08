@@ -1,0 +1,7 @@
+models_scanned=47
+targets_total=85
+unary_targets=25
+early_exit_count=6
+decision_Definable=5
+decision_NotDefinable=1
+decision_Skip=19

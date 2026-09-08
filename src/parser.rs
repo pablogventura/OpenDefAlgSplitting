@@ -357,7 +357,14 @@ pub fn parse_model(path: Option<&Path>, preprocess: bool) -> Result<Model, Parse
                     path: path_str.clone(),
                     message: e,
                 })?;
-                current_rel = Some((Relation::new(sym, arity), ntuples));
+                // Empty extension (ntuples == 0): commit immediately. Otherwise the
+                // relation is never inserted and targets like T_empty disappear.
+                if ntuples == 0 {
+                    relations.insert(sym.clone(), Relation::new(sym, arity));
+                    current_rel = None;
+                } else {
+                    current_rel = Some((Relation::new(sym, arity), ntuples));
+                }
                 continue;
             }
         }
@@ -495,6 +502,17 @@ mod tests {
         let m = parse_model(Some(&p), true).expect("parse");
         assert_eq!(m.universe.len(), 4);
         assert!(m.operations.contains_key("S"));
+    }
+
+    #[test]
+    fn test_parse_empty_target_relation() {
+        let path = std::env::temp_dir().join("opendef_empty_t_test.model");
+        std::fs::write(&path, "0 1\n\nT_empty 0 2\n").expect("write");
+        let m = parse_model(Some(&path), true).expect("parse empty target");
+        let _ = std::fs::remove_file(&path);
+        assert!(m.relations.contains_key("T_empty"));
+        assert!(m.relations["T_empty"].r.is_empty());
+        assert_eq!(m.relations["T_empty"].arity, 2);
     }
 
     #[test]

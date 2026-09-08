@@ -1,0 +1,4 @@
+tier,factor_set,model,ms,result,merge,agree_merge,timeout,wall_s,max_rss_mib_children,max_rss_mib_proc,tmh_computes,tmh_cache_hits,proxy_rejects,proxy_full,finished_impure,hit_steps,last_block_tuples,rc
+hard,baseline,random_magma_n32_k2_random_half_i0.model,,TIMEOUT,DEFINABLE,,1,45.835,11420.9,11422.6,0,0,0,0,0,,,124
+hard,C,random_magma_n32_k2_random_half_i0.model,,TIMEOUT,DEFINABLE,,1,45.779,11420.9,10848.0,0,0,0,0,0,,,124
+hard,A+E,random_magma_n32_k2_random_half_i0.model,,TIMEOUT,DEFINABLE,,1,45.816,11420.9,10660.6,0,0,0,0,0,,,124

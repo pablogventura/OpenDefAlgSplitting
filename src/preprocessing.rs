@@ -161,6 +161,11 @@ fn limpia(t: &[i64]) -> Vec<usize> {
 }
 
 pub fn preprocesamiento2(target: &Relation) -> Vec<Relation> {
+    // Empty extension: keep the target so HIT/engines can return false.
+    // Without this, parse_model(preprocess=true) drops T* with 0 tuples.
+    if target.r.is_empty() {
+        return vec![target.clone()];
+    }
     let mut pruned_relations: HashMap<Pattern, Vec<Vec<i64>>> = HashMap::new();
     for t in &target.r {
         let pattern = Pattern::new(t.clone());
@@ -192,6 +197,15 @@ pub fn preprocesamiento2(target: &Relation) -> Vec<Relation> {
 mod tests {
     use super::*;
     use crate::first_order::relops::Relation;
+
+    #[test]
+    fn test_preprocesamiento_empty_keeps_target() {
+        let r = Relation::new("T_empty", 2);
+        let preps = preprocesamiento2(&r);
+        assert_eq!(preps.len(), 1);
+        assert_eq!(preps[0].sym, "T_empty");
+        assert!(preps[0].r.is_empty());
+    }
 
     #[test]
     fn test_preprocesamiento_un_patron() {

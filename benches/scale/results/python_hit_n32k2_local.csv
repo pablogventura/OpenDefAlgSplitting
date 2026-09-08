@@ -1,0 +1,4 @@
+model,ms,result,max_rss_mib
+random_magma_n32_k2_definable_eq_i0.model,4.280,DEFINABLE,23.2
+random_magma_n32_k2_nondef_mix_i2.model,216.979,DEFINABLE,29.2
+random_magma_n32_k2_random_half_i0.model,264.266,NOT_DEFINABLE,29.2

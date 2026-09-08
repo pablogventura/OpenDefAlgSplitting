@@ -1,0 +1,13 @@
+model,ms,result,notes
+random_magma_n32_k2_random_half_i0.model,,TIMEOUT,"local 240s; maxrss~26GiB (was ~178GiB Serafin); no verdict"
+random_magma_n32_k2_unary_half_i0_slice,,DEFINABLE,"integration test finished_impure_lazy; ms-scale"
+# Prior loop of 10 with broken pipe exit codes marked FAIL; reclassified as TIMEOUT-class (no TSV line under 180s).
+random_magma_n32_k2_nondef_mix_i0.model,,TIMEOUT,local_180s_no_tsv
+random_magma_n32_k2_nondef_mix_i1.model,,TIMEOUT,local_180s_no_tsv
+random_magma_n32_k2_nondef_mix_i2.model,,TIMEOUT,local_180s_no_tsv
+random_magma_n32_k2_nondef_mix_i3.model,,TIMEOUT,local_180s_no_tsv
+random_magma_n32_k2_nondef_mix_i4.model,,TIMEOUT,local_180s_no_tsv
+random_magma_n32_k2_random_half_i1.model,,TIMEOUT,local_180s_no_tsv
+random_magma_n32_k2_random_half_i2.model,,TIMEOUT,local_180s_no_tsv
+random_magma_n32_k2_random_half_i3.model,,TIMEOUT,local_180s_no_tsv
+random_magma_n32_k2_random_half_i4.model,,TIMEOUT,local_180s_no_tsv

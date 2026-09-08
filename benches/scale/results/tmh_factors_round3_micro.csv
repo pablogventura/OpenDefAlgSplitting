@@ -1,0 +1,13 @@
+tier,factor_set,model,ms,result,merge,agree_merge,timeout,wall_s,max_rss_mib_children,max_rss_mib_proc,tmh_computes,tmh_cache_hits,proxy_rejects,proxy_full,finished_impure,hit_steps,last_block_tuples,rc
+micro,baseline,hit_lazy_unary_half_i0.model,19.269,DEFINABLE,,,0,0.021,16.4,0.0,0,0,0,0,0,,,0
+micro,A,hit_lazy_unary_half_i0.model,19.529,DEFINABLE,,,0,0.021,16.4,0.0,0,0,0,0,0,,,0
+micro,E,hit_lazy_unary_half_i0.model,19.935,DEFINABLE,,,0,0.022,16.4,0.0,0,0,0,0,0,,,0
+micro,B,hit_lazy_unary_half_i0.model,17.726,DEFINABLE,,,0,0.020,16.4,0.0,0,0,0,0,0,,,0
+micro,C,hit_lazy_unary_half_i0.model,19.500,DEFINABLE,,,0,0.022,16.4,0.0,0,0,0,0,0,,,0
+micro,A+E,hit_lazy_unary_half_i0.model,18.346,DEFINABLE,,,0,0.020,16.4,0.0,0,0,0,0,0,,,0
+micro,baseline,random_magma_n4_k1_definable_eq_i0.model,0.152,DEFINABLE,DEFINABLE,1,0,0.005,16.4,0.0,0,0,0,0,0,,,0
+micro,A,random_magma_n4_k1_definable_eq_i0.model,0.152,DEFINABLE,DEFINABLE,1,0,0.002,16.4,0.0,0,0,0,0,0,,,0
+micro,E,random_magma_n4_k1_definable_eq_i0.model,0.127,DEFINABLE,DEFINABLE,1,0,0.001,16.4,0.0,0,0,0,0,0,,,0
+micro,B,random_magma_n4_k1_definable_eq_i0.model,0.153,DEFINABLE,DEFINABLE,1,0,0.001,16.4,0.0,0,0,0,0,0,,,0
+micro,C,random_magma_n4_k1_definable_eq_i0.model,0.155,DEFINABLE,DEFINABLE,1,0,0.002,16.4,0.0,0,0,0,0,0,,,0
+micro,A+E,random_magma_n4_k1_definable_eq_i0.model,0.139,DEFINABLE,DEFINABLE,1,0,0.001,16.4,0.0,0,0,0,0,0,,,0
